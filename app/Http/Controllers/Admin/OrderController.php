@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderLog;
 use App\Constant;
+use Illuminate\Support\Facades\log;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -59,6 +60,30 @@ class OrderController extends Controller
         return back()->with('success', 'Pesanan berhasil ditandai sebagai diproses.');
     }
 
+    public function markProcessedCash(Order $order)
+    {
+
+        $order->update([
+            'payment_status' => Constant::PAYMENT_STATUS['PAID'],
+            'status' => Constant::ORDER_STATUS['DIPROSES'],
+        ]);
+        $log = $order->logs()->create([
+            'order_id'    => $order->id,
+            'canteen_id'  => $order->canteen_id,
+            'user_id'     => $order->user_id,
+            'status'      => Constant::ORDER_STATUS['DIPROSES'],
+            'total_price' => $order->total_price,
+            'items'       => $order->items, // json/array
+        ]);
+        foreach ($order->items as $item) {
+            $item->update(['orderlog_id' => $log->id]);
+        }
+
+        return redirect()->back()->with('success', 'Pembayaran tunai diterima dan status diperbarui.');
+    }
+
+
+
     /**
      * Tandai pesanan sebagai DITOLAK dan sembunyikan dari admin.
      */
@@ -89,28 +114,28 @@ class OrderController extends Controller
     /**
      * Tandai pesanan sebagai SELESAI dan sembunyikan dari admin.
      */
-   public function markAsCompleted(Order $order)
-{
-    $order->update([
-        'status' => Constant::ORDER_STATUS['SELESAI'],
-        'admin_deleted' => true,
-    ]);
+    public function markAsCompleted(Order $order)
+    {
+        $order->update([
+            'status' => Constant::ORDER_STATUS['SELESAI'],
+            'admin_deleted' => true,
+        ]);
 
-    $log = $order->logs()->create([
-        'order_id'    => $order->id,
-        'canteen_id'  => $order->canteen_id,
-        'user_id'     => $order->user_id,
-        'status'      => Constant::ORDER_STATUS['SELESAI'],
-        'total_price' => $order->total_price,
-        'items'       => $order->items,
-    ]);
+        $log = $order->logs()->create([
+            'order_id'    => $order->id,
+            'canteen_id'  => $order->canteen_id,
+            'user_id'     => $order->user_id,
+            'status'      => Constant::ORDER_STATUS['SELESAI'],
+            'total_price' => $order->total_price,
+            'items'       => $order->items,
+        ]);
 
-    foreach ($order->items as $item) {
-        $item->update(['orderlog_id' => $log->id]);
+        foreach ($order->items as $item) {
+            $item->update(['orderlog_id' => $log->id]);
+        }
+
+        return back()->with('success', 'Pesanan ditandai selesai dan disembunyikan dari daftar.');
     }
-
-    return back()->with('success', 'Pesanan ditandai selesai dan disembunyikan dari daftar.');
-}
 
 
     /**

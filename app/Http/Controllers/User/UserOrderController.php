@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Yajra\DataTables\Facades\DataTables;
 
 class UserOrderController extends Controller
 {
@@ -36,10 +37,6 @@ class UserOrderController extends Controller
         return view('user.orders.index', compact('menus', 'canteen'));
     }
 
-
-
-
-
     public function store(Request $request)
     {
         $request->validate([
@@ -54,7 +51,7 @@ class UserOrderController extends Controller
             $order = Order::create([
                 'user_id' => Auth::id(),
                 'status' => Constant::ORDER_STATUS['PENDING'],
-                'total_price' => 0 // akan dihitung nanti
+                'total_price' => 0
             ]);
 
             $total = 0;
@@ -72,8 +69,6 @@ class UserOrderController extends Controller
                     'subtotal_price' => $subtotal
                 ]);
             }
-
-            // 3. Update total harga di order
             $order->update([
                 'total_price' => $total
             ]);
@@ -103,5 +98,32 @@ class UserOrderController extends Controller
             'orders' => $orders,
             'statusLabels' => Constant::ORDER_STATUS
         ]);
+    }
+
+    public function table(Request $request)
+    {
+        $orders = Order::with('items.menu')->where('user_id', auth()->id())->latest();
+
+
+        return DataTables::of($orders)
+            ->addIndexColumn()
+            ->editColumn('created_at', fn($order) => $order->created_at->format('d M Y, H:i'))
+            ->addColumn('menus', function ($order) {
+                // Gabungkan semua nama menu yang dipesan
+                return $order->items->map(function ($item) {
+                    return $item->menu->name . ' x' . $item->quantity;
+                })->implode('<br>');
+            })
+            ->addColumn('status', fn($log) => ucfirst($log->status ?? '-'))
+            ->editColumn('total_price', fn($order) => 'Rp ' . number_format($order->total_price, 0, ',', '.'))
+            ->addColumn('payment_method', function ($order) {
+                return ucfirst($order->payment_method ?? '-');
+            })
+            ->addColumn('payment_status', function ($order) {
+                $badge = $order->payment_status === 'paid' ? 'success' : 'warning';
+                return '<span class="badge bg-' . $badge . '">' . ucfirst($order->payment_status) . '</span>';
+            })
+            ->rawColumns(['status', 'menus', 'payment_status'])
+            ->make(true);
     }
 }

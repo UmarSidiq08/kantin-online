@@ -13,12 +13,9 @@ class LogOrderController extends Controller
 {
     $logs = OrderLog::with(['user', 'canteen'])->latest();
 
-    // ✅ Filter status (jika ada)
     if ($request->filled('status')) {
         $logs->where('status', $request->status);
     }
-
-    // ✅ Filter tanggal (jika keduanya diisi)
     if ($request->filled('start_date') && $request->filled('end_date')) {
         $start = date('Y-m-d 00:00:00', strtotime($request->start_date));
         $end = date('Y-m-d 23:59:59', strtotime($request->end_date));
@@ -39,7 +36,6 @@ class LogOrderController extends Controller
         ->addColumn('status', fn($log) => ucfirst($log->status ?? '-'))
         ->addColumn('total_price', fn($log) => 'Rp ' . number_format($log->total_price ?? 0, 0, ',', '.'))
 
-        // Untuk pencarian berdasarkan nama user
         ->filterColumn('user', function ($query, $keyword) {
             $query->whereHas('user', function ($q) use ($keyword) {
                 $q->where('name', 'like', "%{$keyword}%");

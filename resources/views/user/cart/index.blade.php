@@ -66,6 +66,19 @@
                             {{ number_format($carts->sum(function ($cart) {return $cart->menu->price * $cart->quantity;}),0,',','.') }}
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Metode Pembayaran:</label><br>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="payment_method" id="payment_cash"
+                                value="cash" checked>
+                            <label class="form-check-label" for="payment_cash">Tunai (Cash)</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="payment_method" id="payment_digital"
+                                value="digital">
+                            <label class="form-check-label" for="payment_digital">Non Cash</label>
+                        </div>
+                    </div>
 
                     <button id="btnCheckout" data-url="{{ route('user.checkout') }}"
                         class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-5 rounded border border-green-600 hover:border-green-700 transition-colors">
@@ -108,40 +121,74 @@
     </script>
     <script>
         document.getElementById('btnCheckout').addEventListener('click', function() {
-            fetch('{{ route('user.checkout') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.snap_token) {
-                        snap.pay(data.snap_token, {
-                            onSuccess: function(result) {
-                                window.location.href = "{{ route('user.payment.success') }}";
-                            },
-                            onPending: function(result) {
-                                window.location.href = "{{ route('user.payment.success') }}";
-                            },
+            const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
 
-                            onError: function(result) {
-                                alert('Pembayaran gagal.');
-                            },
-                            onClose: function() {
-                                alert('Kamu menutup pembayaran sebelum selesai.');
-                            }
-                        });
-                    } else {
-                        alert(data.error || 'Checkout gagal.');
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
-                    alert('Terjadi kesalahan saat checkout.');
-                });
+            if (selectedMethod === 'cash') {
+                // Checkout metode tunai → gunakan route ke checkoutCash
+                fetch('{{ route('user.checkout.cash') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            payment_method: selectedMethod
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = "{{ route('user.payment.success') }}";
+                        } else {
+                            alert(data.message || 'Checkout tunai gagal.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        alert('Terjadi kesalahan saat checkout tunai.');
+                    });
+
+            } else {
+                // Checkout via Midtrans Snap
+                fetch('{{ route('user.checkout') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            payment_method: selectedMethod
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.snap_token) {
+                            snap.pay(data.snap_token, {
+                                onSuccess: function(result) {
+                                    window.location.href = "{{ route('user.payment.success') }}";
+                                },
+                                onPending: function(result) {
+                                    window.location.href = "{{ route('user.payment.success') }}";
+                                },
+                                onError: function(result) {
+                                    alert('Pembayaran gagal.');
+                                },
+                                onClose: function() {
+                                    alert('Kamu menutup pembayaran sebelum selesai.');
+                                }
+                            });
+                        } else {
+                            alert(data.error || 'Checkout gagal.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        alert('Terjadi kesalahan saat checkout.');
+                    });
+            }
         });
+
+
 
         $('.btnDeleteCart').on('click', function(e) {
             e.preventDefault();

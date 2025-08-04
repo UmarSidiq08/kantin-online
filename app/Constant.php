@@ -24,6 +24,10 @@ class Constant
         'selesai'   => 'success',
         'ditolak'   => 'danger',
     ];
+    public const PAYMENT_STATUS = [
+        'PAID' => 'paid',
+        'UNPAID' => 'unpaid',
+    ];
 
     // public const STATUS_LABELS = [
     //     'pending'   => 'Menunggu Konfirmasi',

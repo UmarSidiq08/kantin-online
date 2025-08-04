@@ -10,6 +10,7 @@
     {{-- Bootstrap & DataTables --}}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     {{-- FontAwesome --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -20,6 +21,57 @@
     {{-- Tailwind / Vite --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
+@push('styles')
+    <style>
+        @keyframes checkmark {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce-in {
+            0% {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+
+            60% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .checkmark-animation {
+            animation: checkmark 0.8s ease-out;
+        }
+
+        .bounce-in {
+            animation: bounce-in 0.8s ease-out 0.3s both;
+        }
+
+        .bounce-in-delay {
+            animation: bounce-in 0.8s ease-out 0.6s both;
+        }
+
+        .bounce-in-delay-2 {
+            animation: bounce-in 0.8s ease-out 0.9s both;
+        }
+    </style>
+@endpush
 
 <body class="bg-gray-50 text-gray-900">
 
@@ -178,5 +230,6 @@
 
     @yield('script')
 </body>
+@stack('scripts')
 
 </html>

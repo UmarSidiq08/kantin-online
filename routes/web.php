@@ -21,16 +21,21 @@ require __DIR__ . '/auth.php';
 
 Route::middleware('auth')->group(function () {
 
+    Route::controller(ProfileController::class)->group(function () {
+        Route::get('/profile', 'edit')->name('profile.edit');
+        Route::patch('/profile', 'update')->name('profile.update');
+        Route::delete('/profile', 'destroy')->name('profile.destroy');
+    });
 
     Route::middleware(['role:admin', 'can:canteen.owner'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
         Route::get('/riwayat-pesanan', [OrderController::class, 'logHistory'])->name('logs');
         Route::get('/riwayat-pesanan/data', [LogOrderController::class, 'data'])->name('logs.data');
 
-
         Route::prefix('orders')->name('orders.')->controller(OrderController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::post('/{order}/accept', 'markAsProcessed')->name('mark-processed');
+            Route::post('/{order}/mark-processed-cash',  'markProcessedCash')->name('mark-processed-cash');
             Route::post('/{order}/complete', 'markAsCompleted')->name('complete-and-delete');
             Route::post('/{order}/reject', 'markAsRejected')->name('reject');
             Route::post('/rejected-delete/{order}', 'deleteRejected')->name('rejected-delete');
@@ -45,20 +50,24 @@ Route::middleware('auth')->group(function () {
     });
     Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {
 
-        Route::get('/dashboard', [UserController::class, 'index'])->name('dashboard');
-        Route::get('/menu', [UserController::class, 'index'])->name('menu.index');
-        Route::get('/pilih-kantin/{id}', [UserController::class, 'pilihKantin'])->name('pilih-kantin');
-        Route::get('/payment/success', [PaymentController::class, 'success'])->name('payment.success');
-        Route::get('/payment/pending', [PaymentController::class, 'success'])->name('payment.pending');
-        Route::post('/checkout', [PaymentController::class, 'checkout'])->name('checkout');
+        Route::controller(UserController::class)->group(function () {
+            Route::get('/dashboard', 'index')->name('dashboard');
+            Route::get('/menu', 'index')->name('menu.index');
+            Route::get('/pilih-kantin/{id}', 'pilihKantin')->name('pilih-kantin');
+        });
+        Route::controller(PaymentController::class)->group(function () {
+            Route::get('/payment/success', 'success')->name('payment.success');
+            Route::get('/payment/pending', 'success')->name('payment.pending');
+            Route::post('/checkout', 'checkout')->name('checkout');
+            Route::post('/checkout/cash', 'checkoutCash')->name('checkout.cash');
+        });
 
         Route::prefix('orders')->name('orders.')->controller(UserOrderController::class)->group(function () {
             Route::get('/', 'index')->name('index');
-
             Route::get('/success', 'success')->name('success');
             Route::get('/history', 'history')->name('history');
+            Route::get('/history/table', 'table')->name('history.table');
         });
-
 
         Route::prefix('keranjang')->name('cart.')->controller(CartController::class)->group(function () {
             Route::get('/', 'index')->name('index');
@@ -66,7 +75,4 @@ Route::middleware('auth')->group(function () {
             Route::delete('/hapus/{id}', 'destroy')->name('destroy');
         });
     });
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
