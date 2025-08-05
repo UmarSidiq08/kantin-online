@@ -36,6 +36,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/', 'index')->name('index');
             Route::post('/{order}/accept', 'markAsProcessed')->name('mark-processed');
             Route::post('/{order}/mark-processed-cash',  'markProcessedCash')->name('mark-processed-cash');
+            Route::post('/{order}/confirm-cash-payment', 'confirmCashPayment')->name('confirm-cash-payment');
+
             Route::post('/{order}/complete', 'markAsCompleted')->name('complete-and-delete');
             Route::post('/{order}/reject', 'markAsRejected')->name('reject');
             Route::post('/rejected-delete/{order}', 'deleteRejected')->name('rejected-delete');

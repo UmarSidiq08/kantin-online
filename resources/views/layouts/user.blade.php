@@ -226,6 +226,75 @@
                 this.setAttribute('aria-expanded', 'false');
             }
         });
+
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const paymentOptions = document.querySelectorAll('.payment-option');
+
+            // Fungsi untuk update tampilan radio button
+            function updateRadioDisplay() {
+                paymentOptions.forEach(option => {
+                    const radio = option.querySelector('input[type="radio"]');
+                    const radioCustom = option.querySelector('.radio-custom');
+                    const radioDot = option.querySelector('.radio-dot');
+                    const paymentBadge = option.querySelector('.payment-badge');
+                    const paymentText = option.querySelector('.payment-text');
+
+                    if (radio.checked) {
+                        // Style untuk yang dipilih
+                        if (radio.value === 'cash') {
+                            option.classList.add('border-green-300', 'bg-green-50');
+                            option.classList.remove('border-gray-200', 'bg-white', 'border-blue-300',
+                                'bg-blue-50');
+                            radioCustom.classList.add('border-green-500', 'bg-green-500');
+                            radioCustom.classList.remove('border-gray-300', 'bg-white', 'border-blue-500',
+                                'bg-blue-500');
+                            paymentText.classList.add('text-green-700');
+                            paymentText.classList.remove('text-gray-800', 'text-blue-700');
+                        } else {
+                            option.classList.add('border-blue-300', 'bg-blue-50');
+                            option.classList.remove('border-gray-200', 'bg-white', 'border-green-300',
+                                'bg-green-50');
+                            radioCustom.classList.add('border-blue-500', 'bg-blue-500');
+                            radioCustom.classList.remove('border-gray-300', 'bg-white', 'border-green-500',
+                                'bg-green-500');
+                            paymentText.classList.add('text-blue-700');
+                            paymentText.classList.remove('text-gray-800', 'text-green-700');
+                        }
+                        radioDot.classList.add('opacity-100');
+                        radioDot.classList.remove('opacity-0');
+                        paymentBadge.classList.add('opacity-100');
+                        paymentBadge.classList.remove('opacity-0');
+                    } else {
+                        // Style untuk yang tidak dipilih
+                        option.classList.add('border-gray-200', 'bg-white');
+                        option.classList.remove('border-green-300', 'bg-green-50', 'border-blue-300',
+                            'bg-blue-50');
+                        radioCustom.classList.add('border-gray-300', 'bg-white');
+                        radioCustom.classList.remove('border-green-500', 'bg-green-500', 'border-blue-500',
+                            'bg-blue-500');
+                        paymentText.classList.add('text-gray-800');
+                        paymentText.classList.remove('text-green-700', 'text-blue-700');
+                        radioDot.classList.add('opacity-0');
+                        radioDot.classList.remove('opacity-100');
+                        paymentBadge.classList.add('opacity-0');
+                        paymentBadge.classList.remove('opacity-100');
+                    }
+                });
+            }
+
+            // Event listener untuk setiap option
+            paymentOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    const radio = this.querySelector('input[type="radio"]');
+                    radio.checked = true;
+                    updateRadioDisplay();
+                });
+            });
+
+            // Update tampilan awal
+            updateRadioDisplay();
+        });
     </script>
 
     @yield('script')

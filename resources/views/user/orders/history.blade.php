@@ -9,17 +9,19 @@
 
 @section('content')
     <div class="container mt-4">
-        <h2>Riwayat Pesanan Saya</h2>
+        <div class="mb-6">
+            <h2 class="text-2xl font-semibold text-gray-800">Riwayat Pesanan</h2>
+        </div>
         <table class="table table-bordered mt-3" id="orders-table">
             <thead>
                 <tr>
-                    <th>No</th>
-                    <th>Tanggal</th>
-                    <th>Menu</th>
-                    <th>Status</th>
-                    <th>Total Harga</th>
-                    <th>Metode Pembayaran</th>
-                    <th>Status Pembayaran</th>
+                    <th class="px-1 py-3 text-center text-sm font-medium text-gray-700">No</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Menu</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Total</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Pembayaran</th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">Status Bayar</th>
                 </tr>
             </thead>
         </table>

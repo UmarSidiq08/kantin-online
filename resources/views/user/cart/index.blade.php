@@ -59,29 +59,83 @@
 
                 <!-- Checkout Section -->
                 <div class="bg-white rounded-xl shadow-md p-5">
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-medium text-gray-800">Total Pesanan</h3>
                         <div class="text-xl font-bold text-green-600">
                             Rp
                             {{ number_format($carts->sum(function ($cart) {return $cart->menu->price * $cart->quantity;}),0,',','.') }}
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Metode Pembayaran:</label><br>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="payment_method" id="payment_cash"
-                                value="cash" checked>
-                            <label class="form-check-label" for="payment_cash">Tunai (Cash)</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="payment_method" id="payment_digital"
-                                value="digital">
-                            <label class="form-check-label" for="payment_digital">Non Cash</label>
+
+                    <!-- Payment Method Section -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-800 mb-4">Metode Pembayaran:</label>
+                        <div class="space-y-3">
+                            <!-- Cash Payment Option -->
+                            <label
+                                class="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition-all duration-200 payment-option hover:border-green-300"
+                                data-payment="cash">
+                                <input type="radio" name="payment_method" id="payment_cash" value="cash" class="hidden"
+                                    checked>
+                                <div class="flex items-center w-full">
+                                    <div
+                                        class="radio-custom w-5 h-5 border-2 border-green-500 bg-green-500 rounded-full mr-4 flex items-center justify-center transition-all duration-200">
+                                        <div
+                                            class="radio-dot w-2 h-2 bg-white rounded-full opacity-100 transition-opacity duration-200">
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between w-full">
+                                        <div class="flex items-center">
+                                            <span class="text-2xl mr-3">💰</span>
+                                            <div>
+                                                <div class="payment-text font-medium text-green-700 text-sm">Tunai (Cash)
+                                                </div>
+                                                <div class="text-xs text-gray-500 mt-1">Pembayaran langsung dengan uang
+                                                    tunai</div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="payment-badge text-green-600 font-medium text-xs opacity-100 transition-opacity duration-200 bg-green-50 px-2 py-1 rounded-full">
+                                            ✓ Dipilih
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <!-- Digital Payment Option -->
+                            <label
+                                class="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition-all duration-200 payment-option hover:border-blue-300"
+                                data-payment="digital">
+                                <input type="radio" name="payment_method" id="payment_digital" value="digital"
+                                    class="hidden">
+                                <div class="flex items-center w-full">
+                                    <div
+                                        class="radio-custom w-5 h-5 border-2 border-gray-300 rounded-full mr-4 flex items-center justify-center transition-all duration-200">
+                                        <div
+                                            class="radio-dot w-2 h-2 bg-white rounded-full opacity-0 transition-opacity duration-200">
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between w-full">
+                                        <div class="flex items-center">
+                                            <span class="text-2xl mr-3">💳</span>
+                                            <div>
+                                                <div class="payment-text font-medium text-gray-800 text-sm">Non Cash</div>
+                                                <div class="text-xs text-gray-500 mt-1">Transfer Bank, E-Wallet, Kartu
+                                                    Kredit</div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="payment-badge text-blue-600 font-medium text-xs opacity-0 transition-opacity duration-200 bg-blue-50 px-2 py-1 rounded-full">
+                                            ✓ Dipilih
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
                     <button id="btnCheckout" data-url="{{ route('user.checkout') }}"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-5 rounded border border-green-600 hover:border-green-700 transition-colors">
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-5 rounded-lg border border-green-600 hover:border-green-700 transition-all duration-200 shadow-sm hover:shadow-md">
                         💳 Checkout Sekarang
                     </button>
                 </div>
@@ -120,6 +174,10 @@
         @endif
     </script>
     <script>
+        // JavaScript untuk mengontrol radio button custom
+       
+
+        // Script checkout yang sudah ada (tidak diubah)
         document.getElementById('btnCheckout').addEventListener('click', function() {
             const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
 
@@ -187,8 +245,6 @@
                     });
             }
         });
-
-
 
         $('.btnDeleteCart').on('click', function(e) {
             e.preventDefault();
