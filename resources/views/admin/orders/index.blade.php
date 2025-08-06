@@ -54,19 +54,21 @@
                             @if ($order->status === \App\Constant::ORDER_STATUS['PENDING'])
                                 <div class="space-y-3">
                                     @if ($order->payment_method === 'cash' && $order->payment_status === 'unpaid')
-                                        {{-- CASH + UNPAID: Tampilkan modal konfirmasi --}}
-
-
-
-
-                                        {{-- NON-CASH atau CASH+PAID: Langsung terima --}}
+                                        {{-- CASH + UNPAID: Tampilkan tombol yang akan memunculkan modal konfirmasi --}}
+                                        <button type="button" id="accept-order-{{ $order->id }}"
+                                            class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center space-x-2">
+                                            @include('partials.icons.check')
+                                            <span>Terima Pesanan (Belum Dibayar)</span>
+                                        </button>
+                                    @elseif ($order->payment_method === 'digital' || ($order->payment_method === 'cash' && $order->payment_status === 'paid'))
+                                        {{-- DIGITAL atau CASH+PAID: Langsung terima --}}
                                         <button type="button" id="accept-order-{{ $order->id }}"
                                             class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center space-x-2">
                                             @include('partials.icons.check')
                                             <span>
                                                 @if ($order->payment_method === 'cash' && $order->payment_status === 'paid')
                                                     Terima Pesanan (Cash Sudah Dibayar)
-                                                @elseif($order->payment_status === 'paid')
+                                                @elseif($order->payment_method === 'digital' && $order->payment_status === 'paid')
                                                     Terima Pesanan (Sudah Dibayar)
                                                 @else
                                                     Terima Pesanan (Belum Dibayar)
