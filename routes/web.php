@@ -8,9 +8,10 @@ use App\Http\Controllers\User\UserOrderController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\LogOrderController;
+use App\Http\Controllers\Admin\LaporanPenjualanController;
 
 
 
@@ -28,7 +29,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware(['role:admin', 'can:canteen.owner'])->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/riwayat-pesanan', [OrderController::class, 'logHistory'])->name('logs');
         Route::get('/riwayat-pesanan/data', [LogOrderController::class, 'data'])->name('logs.data');
 
@@ -48,6 +49,12 @@ Route::middleware('auth')->group(function () {
             Route::post('/store', 'store')->name('store');
             Route::post('/update', 'update')->name('update');
             Route::post('/delete', 'destroy')->name('destroy');
+        });
+        Route::prefix('laporan-penjualan')->name('laporan.')->controller(LaporanPenjualanController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/data', 'data')->name('data');
+            Route::get('/export/excel', 'exportExcel')->name('export.excel');
+            Route::get('/export/pdf', 'exportPDF')->name('export.pdf');
         });
     });
     Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {

@@ -174,9 +174,6 @@
         @endif
     </script>
     <script>
-        // JavaScript untuk mengontrol radio button custom
-       
-
         // Script checkout yang sudah ada (tidak diubah)
         document.getElementById('btnCheckout').addEventListener('click', function() {
             const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;

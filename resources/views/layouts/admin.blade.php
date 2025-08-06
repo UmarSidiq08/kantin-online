@@ -10,7 +10,7 @@
     <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    
+
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -84,6 +84,48 @@
                 @apply bg-blue-500 text-white border-blue-500;
             }
         </style>
+        <style>
+            /* DataTables Custom Styling */
+            .dataTables_wrapper {
+                @apply px-6 pb-6;
+            }
+
+            .dataTables_wrapper .dataTables_length,
+            .dataTables_wrapper .dataTables_filter {
+                @apply mb-4;
+            }
+
+            .dataTables_wrapper .dataTables_length select,
+            .dataTables_wrapper .dataTables_filter input {
+                @apply border border-gray-300 rounded-lg px-3 py-2 text-sm min-w-0;
+            }
+
+            .dataTables_wrapper .dataTables_info {
+                @apply text-sm text-gray-600 py-4;
+            }
+
+            .dataTables_wrapper .dataTables_paginate {
+                @apply pt-4;
+            }
+
+            .dataTables_wrapper .dataTables_paginate .paginate_button {
+                @apply px-3 py-2 mx-1 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors;
+            }
+
+            .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+                @apply bg-blue-600 text-white border-blue-600;
+            }
+
+            /* Table Row Hover Effect */
+            tbody tr:hover {
+                @apply bg-gray-50;
+            }
+
+            /* Smooth transitions */
+            * {
+                transition: all 0.2s ease-in-out;
+            }
+        </style>
     @endpush
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -145,6 +187,17 @@
                                 </path>
                             </svg>
                             Riwayat Pesanan
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.laporan.index') }}"
+                            class="flex items-center px-4 py-3 text-gray-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all duration-200 {{ request()->routeIs('admin.laporan.index*') ? 'border-l-4 border-blue-500 bg-slate-700 text-white' : '' }}">
+                            <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z">
+                                </path>
+                            </svg>
+                            Laporan Penjualan
                         </a>
                     </li>
                 </ul>
@@ -211,8 +264,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
-
 
     {{-- Sidebar Navigation Script --}}
     <script>

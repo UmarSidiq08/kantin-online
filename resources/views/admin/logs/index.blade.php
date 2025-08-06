@@ -4,7 +4,6 @@
 
 @section('content')
     <div class="space-y-6">
-        <!-- Header -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -19,12 +18,9 @@
             </div>
         </div>
 
-        <!-- Filter Section -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Filter Data</h3>
-
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <!-- Status Filter -->
                 <div class="space-y-2">
                     <label for="filter-status" class="block text-sm font-medium text-gray-700">
                         Status Pesanan
@@ -38,7 +34,6 @@
                     </select>
                 </div>
 
-                <!-- Start Date -->
                 <div class="space-y-2">
                     <label for="filter-start-date" class="block text-sm font-medium text-gray-700">
                         Dari Tanggal
@@ -47,7 +42,6 @@
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                 </div>
 
-                <!-- End Date -->
                 <div class="space-y-2">
                     <label for="filter-end-date" class="block text-sm font-medium text-gray-700">
                         Sampai Tanggal
@@ -56,7 +50,6 @@
                         class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
                 </div>
 
-                <!-- Action Buttons -->
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700">
                         Aksi
@@ -71,7 +64,6 @@
             </div>
         </div>
 
-        <!-- Table Section -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200">
                 <h3 class="text-lg font-semibold text-gray-900">Data Riwayat Pesanan</h3>
@@ -97,7 +89,6 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            <!-- DataTables will populate this -->
                         </tbody>
                     </table>
                 </div>
@@ -107,14 +98,11 @@
 @endsection
 
 @push('scripts')
-    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 
     <script>
         $(document).ready(function() {
-            // Initialize DataTable
             let table = $('#orderlog-table').DataTable({
                 processing: true,
                 serverSide: true,
@@ -185,12 +173,11 @@
                     }
                 ],
                 drawCallback: function(settings) {
-                    // Update total records
                     $('#total-records').text(settings.json.recordsTotal || 0);
                 },
                 order: [
                     [5, 'desc']
-                ], // Sort by created_at desc
+                ],
                 pageLength: 25,
                 lengthMenu: [
                     [10, 25, 50, 100],
@@ -198,7 +185,6 @@
                 ]
             });
 
-            // Filter handlers
             $('#filter-status').change(function() {
                 table.ajax.reload();
             });
@@ -214,7 +200,6 @@
                 table.ajax.reload();
             });
 
-            // Auto-apply date filter when both dates are selected
             $('#filter-start-date, #filter-end-date').change(function() {
                 if ($('#filter-start-date').val() && $('#filter-end-date').val()) {
                     table.ajax.reload();

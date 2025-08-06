@@ -68,8 +68,6 @@ class MenuController extends Controller
         return response()->json(['message' => 'Menu berhasil diperbarui!']);
     }
 
-
-
     /**
      * Remove the specified resource from storage.
      */ public function destroy(Request $request)

@@ -34,7 +34,7 @@ class PaymentController extends Controller
         foreach ($cartItems as $item) {
             $total += $item->menu->price * $item->quantity;
         }
-        
+
         $order = Order::create([
             'user_id' => $userId,
             'canteen_id' => $canteenId,
@@ -116,7 +116,7 @@ class PaymentController extends Controller
 
             $order = Order::create([
                 'user_id' => $user->id,
-                'canteen_id' => $cartItems->first()->menu->canteen_id, // asumsi semua item dari kantin yg sama
+                'canteen_id' => $cartItems->first()->menu->canteen_id,
                 'payment_method' => 'cash',
                 'status' => 'pending',
                 'payment_status' => Constant::PAYMENT_STATUS['UNPAID'],
@@ -126,7 +126,6 @@ class PaymentController extends Controller
 
             Log::info('Order cash berhasil dibuat', ['order_id' => $order->id]);
 
-            // Simpan order item
             foreach ($cartItems as $item) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -136,7 +135,6 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // Kosongkan keranjang
             Cart::where('user_id', $user->id)->delete();
 
             DB::commit();

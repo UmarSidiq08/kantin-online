@@ -13,4 +13,8 @@ class Menu extends Model
     {
         return $this->belongsTo(Canteen::class);
     }
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 }

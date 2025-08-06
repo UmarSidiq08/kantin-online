@@ -137,15 +137,7 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    {{-- <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
-        <div class="flex items-center justify-center min-h-screen">
-            <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                <span class="text-gray-700">Memproses...</span>
-            </div>
-        </div>
-    </div> --}}
+
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-3"></div>
 
 @endsection

@@ -17,17 +17,12 @@ class CartController extends Controller
         return view('user.cart.index', compact('carts'));
     }
 
-    // CartController.php
-
     public function add(Request $request)
     {
         $quantities = $request->input('quantities');
         $userId = auth()->id();
-
-        // Cek apakah sudah ada item di keranjang
         $existingCart = Cart::where('user_id', $userId)->first();
 
-        // Ambil salah satu menu yang akan ditambahkan
         $quantities = $request->input('quantities');
 
         if (!is_array($quantities) || empty($quantities)) {
@@ -39,12 +34,10 @@ class CartController extends Controller
         $menu = Menu::findOrFail($firstMenuId);
         $menuCanteenId = $menu->canteen_id;
 
-        // Kalau sudah ada item dan kantinnya beda → tolak
         if ($existingCart && $existingCart->canteen_id !== $menuCanteenId) {
             return redirect()->route('user.cart.index')->with('error', 'Kamu hanya bisa memesan dari satu kantin dalam satu waktu. Kosongkan keranjang terlebih dahulu.');
         }
 
-        // Tambahkan atau update item ke keranjang
         foreach ($quantities as $menuId => $qty) {
             if ($qty > 0) {
                 $menu = Menu::findOrFail($menuId);
