@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use App\Models\OrderItem;
 use Carbon\Carbon;
+use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Exports\MenuSalesExport;
@@ -15,10 +16,54 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class LaporanPenjualanController extends Controller
 {
+
+
     public function index()
     {
-        return view('admin.laporan.index');
+        $canteenId = auth()->user()->canteen->id;
+
+        $today = Carbon::today();
+        $yesterday = Carbon::yesterday();
+        $now = Carbon::now();
+        $month = $now->month;
+        $year = $now->year;
+
+        // Total hari ini
+        $totalToday = OrderItem::whereHas('order', function ($q) use ($today) {
+            $q->whereDate('created_at', $today)
+                ->where('status', 'selesai');
+        })->whereHas('menu', function ($q) use ($canteenId) {
+            $q->where('canteen_id', $canteenId);
+        })->sum(DB::raw('quantity * price'));
+
+        // Total kemarin
+        $totalYesterday = OrderItem::whereHas('order', function ($q) use ($yesterday) {
+            $q->whereDate('created_at', $yesterday)
+                ->where('status', 'selesai');
+        })->whereHas('menu', function ($q) use ($canteenId) {
+            $q->where('canteen_id', $canteenId);
+        })->sum(DB::raw('quantity * price'));
+
+        // Total bulan ini
+        $totalThisMonth = OrderItem::whereHas('order', function ($q) use ($month, $year) {
+            $q->whereMonth('created_at', $month)
+                ->whereYear('created_at', $year)
+                ->where('status', 'selesai');
+        })->whereHas('menu', function ($q) use ($canteenId) {
+            $q->where('canteen_id', $canteenId);
+        })->sum(DB::raw('quantity * price'));
+
+        return view('admin.laporan.index', compact(
+            'today',
+            'totalToday',
+            'totalYesterday',
+            'totalThisMonth',
+            'month',
+            'year'
+        ));
     }
+
+
 
     public function data(Request $request)
     {
@@ -110,5 +155,32 @@ class LaporanPenjualanController extends Controller
         $pdf = Pdf::loadView('exports.menu_sales', compact('data'));
 
         return $pdf->download('laporan_penjualan_menu.pdf');
+    }
+
+    public function chartData()
+    {
+        $canteenId = auth()->user()->canteen->id;
+
+        // 7 Hari terakhir
+        $dailyData = collect();
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i)->toDateString();
+
+            $total = OrderItem::whereHas('order', function ($q) use ($date) {
+                $q->whereDate('created_at', $date)
+                    ->where('status', 'selesai');
+            })->whereHas('menu', function ($q) use ($canteenId) {
+                $q->where('canteen_id', $canteenId);
+            })->sum(DB::raw('quantity * price'));
+
+
+
+            $dailyData->push([
+                'date' => Carbon::parse($date)->format('d M'),
+                'total' => $total,
+            ]);
+        }
+
+        return response()->json($dailyData);
     }
 }

@@ -85,6 +85,10 @@
             }
         </style>
         <style>
+
+        </style>
+        <style>
+            
             /* DataTables Custom Styling */
             .dataTables_wrapper {
                 @apply px-6 pb-6;

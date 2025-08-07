@@ -53,6 +53,7 @@ Route::middleware('auth')->group(function () {
         Route::prefix('laporan-penjualan')->name('laporan.')->controller(LaporanPenjualanController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/data', 'data')->name('data');
+            Route::get('/admin/laporan/chart', 'chartData')->name('chart');
             Route::get('/export/excel', 'exportExcel')->name('export.excel');
             Route::get('/export/pdf', 'exportPDF')->name('export.pdf');
         });
