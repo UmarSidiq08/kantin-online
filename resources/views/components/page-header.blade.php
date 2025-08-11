@@ -15,8 +15,8 @@
         }
     }
 
-    $pageTitle = $pageTitle ?? 'Dashboard';
-    $pageDescription = $pageDescription ?? 'Kelola sistem Anda dengan mudah';
+    $pageTitle = $pageTitle ?? '';
+    $pageDescription = $pageDescription ?? '';
 @endphp
 
 <h1 class="text-xl font-semibold">{{ $pageTitle }}</h1>

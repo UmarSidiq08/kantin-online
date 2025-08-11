@@ -20,7 +20,14 @@ class LaporanPenjualanController extends Controller
 
     public function index()
     {
-        $canteenId = auth()->user()->canteen->id;
+        $canteen = auth()->user()->canteen;
+
+        if (!$canteen || !$canteen->is_premium) {
+            return redirect()->route('admin.premium.show')
+                ->with('error', 'Fitur ini hanya tersedia untuk member premium.');
+        }
+
+        $canteenId = $canteen->id;
 
         $today = Carbon::today();
         $yesterday = Carbon::yesterday();

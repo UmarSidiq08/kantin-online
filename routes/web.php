@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\LogOrderController;
 use App\Http\Controllers\Admin\LaporanPenjualanController;
+use App\Http\Controllers\Admin\PremiumController;
 
 
 
@@ -19,7 +20,7 @@ Route::get('/', function () {
     return view('auth.login');
 });
 require __DIR__ . '/auth.php';
-
+Route::post('/premium/callback', [PremiumController::class, 'callback']);
 Route::middleware('auth')->group(function () {
 
     Route::controller(ProfileController::class)->group(function () {
@@ -56,6 +57,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/admin/laporan/chart', 'chartData')->name('chart');
             Route::get('/export/excel', 'exportExcel')->name('export.excel');
             Route::get('/export/pdf', 'exportPDF')->name('export.pdf');
+        });
+        Route::prefix('premium')->name('premium.')->controller(PremiumController::class)->group(function () {
+            Route::get('/', 'show')->name('show');
+            Route::post('/', 'pay')->name('pay');
+            Route::post('/premium/callback', 'callback');
+
         });
     });
     Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {
