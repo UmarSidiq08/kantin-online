@@ -25,22 +25,6 @@
             <div class="mb-8">
                 <h2 class="text-xl font-bold text-gray-900 mb-6">📅 Ringkasan Penjualan</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    @php
-                        $summaryData = [
-                            ['title' => 'Penjualan Hari Ini', 'value' => $totalToday, 'color' => 'green'],
-                            ['title' => 'Penjualan Kemarin', 'value' => $totalYesterday, 'color' => 'blue'],
-                            [
-                                'title' =>
-                                    'Bulan ' .
-                                    \Carbon\Carbon::create()->month($month)->locale('id')->isoFormat('MMMM') .
-                                    ' ' .
-                                    $year,
-                                'value' => $totalThisMonth,
-                                'color' => 'purple',
-                            ],
-                        ];
-                    @endphp
-
                     @foreach ($summaryData as $data)
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div class="bg-gradient-to-r from-{{ $data['color'] }}-500 to-{{ $data['color'] }}-600 p-6">
@@ -74,13 +58,6 @@
                 </div>
                 <div class="p-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        @php
-                            $filters = [
-                                ['id' => 'filter-start-date', 'label' => 'Dari Tanggal', 'type' => 'date'],
-                                ['id' => 'filter-end-date', 'label' => 'Sampai Tanggal', 'type' => 'date'],
-                            ];
-                        @endphp
-
                         @foreach ($filters as $filter)
                             <div class="space-y-2">
                                 <label class="block text-sm font-medium text-gray-700">{{ $filter['label'] }}</label>
@@ -137,25 +114,6 @@
                             </p>
                         </div>
                         <div class="flex items-center space-x-3">
-                            @php
-                                $exportButtons = [
-                                    [
-                                        'route' => 'admin.laporan.export.excel',
-                                        'color' => 'emerald',
-                                        'icon' =>
-                                            'M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-                                        'text' => 'Export Excel',
-                                    ],
-                                    [
-                                        'route' => 'admin.laporan.export.pdf',
-                                        'color' => 'red',
-                                        'icon' =>
-                                            'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z',
-                                        'text' => 'Export PDF',
-                                    ],
-                                ];
-                            @endphp
-
                             @foreach ($exportButtons as $btn)
                                 <a href="{{ route($btn['route'], ['start_date' => request('start_date'), 'end_date' => request('end_date')]) }}"
                                     class="inline-flex items-center px-4 py-2 bg-{{ $btn['color'] }}-600 hover:bg-{{ $btn['color'] }}-700 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-105">
@@ -176,15 +134,6 @@
                             <table class="w-full divide-y divide-gray-200" id="laporan-table">
                                 <thead class="bg-gray-50">
                                     <tr>
-                                        @php
-                                            $headers = [
-                                                ['text' => 'No', 'class' => 'w-16 text-left'],
-                                                ['text' => 'Menu', 'class' => 'text-left'],
-                                                ['text' => 'Jumlah Terjual', 'class' => 'w-32 text-center'],
-                                                ['text' => 'Total Pendapatan', 'class' => 'w-40 text-right'],
-                                                ['text' => 'Terakhir Terjual', 'class' => 'w-40 text-center'],
-                                            ];
-                                        @endphp
 
                                         @foreach ($headers as $header)
                                             <th
@@ -321,7 +270,7 @@
                 const originalHtml = button.html();
                 button.html(
                     '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Mengunduh...'
-                    );
+                );
                 setTimeout(() => button.html(originalHtml), 3000);
             });
 

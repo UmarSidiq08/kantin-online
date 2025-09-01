@@ -60,15 +60,59 @@ class LaporanPenjualanController extends Controller
             $q->where('canteen_id', $canteenId);
         })->sum(DB::raw('quantity * price'));
 
+        $summaryData = [
+            ['title' => 'Penjualan Hari Ini', 'value' => $totalToday, 'color' => 'green'],
+            ['title' => 'Penjualan Kemarin', 'value' => $totalYesterday, 'color' => 'blue'],
+            [
+                'title' => 'Bulan ' . \Carbon\Carbon::create()->month($month)->locale('id')->isoFormat('MMMM') . ' ' . $year,
+                'value' => $totalThisMonth,
+                'color' => 'purple'
+            ],
+        ];
+        $filters = [
+            ['id' => 'filter-start-date', 'label' => 'Dari Tanggal', 'type' => 'date'],
+            ['id' => 'filter-end-date', 'label' => 'Sampai Tanggal', 'type' => 'date'],
+        ];
+
+        $exportButtons = [
+            [
+                'route' => 'admin.laporan.export.excel',
+                'color' => 'emerald',
+                'icon' =>
+                'M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+                'text' => 'Export Excel',
+            ],
+            [
+                'route' => 'admin.laporan.export.pdf',
+                'color' => 'red',
+                'icon' =>
+                'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+                'text' => 'Export PDF',
+            ],
+        ];
+        $headers = [
+            ['text' => 'No', 'class' => 'w-16 text-left'],
+            ['text' => 'Menu', 'class' => 'text-left'],
+            ['text' => 'Jumlah Terjual', 'class' => 'w-32 text-center'],
+            ['text' => 'Total Pendapatan', 'class' => 'w-40 text-right'],
+            ['text' => 'Terakhir Terjual', 'class' => 'w-40 text-center'],
+        ];
+
+
         return view('admin.laporan.index', compact(
             'today',
             'totalToday',
             'totalYesterday',
             'totalThisMonth',
             'month',
-            'year'
+            'year',
+            'summaryData',
+            'filters',
+            'exportButtons',
+            'headers'
         ));
     }
+
 
 
 

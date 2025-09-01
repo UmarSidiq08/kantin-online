@@ -14,15 +14,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-
-
-
 class PaymentController extends Controller
 {
     public function checkout(Request $request)
     {
         $userId = auth()->id();
-        $paymentMethod = $request->payment_method;
         $cartItems = Cart::with('menu.canteen')->where('user_id', $userId)->get();
 
         if ($cartItems->isEmpty()) {
@@ -35,45 +31,32 @@ class PaymentController extends Controller
             $total += $item->menu->price * $item->quantity;
         }
 
-        $order = Order::create([
-            'user_id' => $userId,
-            'canteen_id' => $canteenId,
-            'total_price' => $total,
-            'status' => Constant::ORDER_STATUS['PENDING'],
-            'invoice' => 'INV-' . time(),
-            'payment_method' => $paymentMethod,
-            'payment_status' => $paymentMethod === 'cash' ? 'unpaid' : 'paid',
-        ]);
+        $orderId = 'ORDER-' . time() . '-' . $userId;
 
-        foreach ($cartItems as $item) {
-            OrderItem::create([
-                'order_id' => $order->id,
-                'menu_id' => $item->menu_id,
-                'quantity' => $item->quantity,
-                'price' => $item->menu->price,
-            ]);
-        }
-
-        // Midtrans Config
         Config::$serverKey = config('midtrans.server_key');
         Config::$isProduction = config('midtrans.is_production');
         Config::$isSanitized = config('midtrans.sanitized');
         Config::$is3ds = config('midtrans.3ds');
 
-        // Snap Token
         $user = auth()->user();
         $params = [
             'transaction_details' => [
-                'order_id' => $order->invoice,
+                'order_id' => $orderId,
                 'gross_amount' => $total,
             ],
             'customer_details' => [
                 'first_name' => $user->name,
                 'email' => $user->email,
             ],
-            'callbacks' => [
-                'finish' => route('user.payment.success'),
-            ],
+            'custom_field1' => json_encode($cartItems->map(function($item) {
+                return [
+                    'menu_id' => $item->menu_id,
+                    'quantity' => $item->quantity,
+                    'price' => $item->menu->price
+                ];
+            })),
+            'custom_field2' => $canteenId,
+            'custom_field3' => $userId,
         ];
 
         $snapToken = Snap::getSnapToken($params);
@@ -81,15 +64,12 @@ class PaymentController extends Controller
         return response()->json([
             'message' => 'Checkout berhasil',
             'snap_token' => $snapToken,
-            'order_id' => $order->id,
+            'order_temp_id' => $orderId,
         ]);
     }
+
     public function success(Request $request)
     {
-        // Kosongkan keranjang user yang login
-        Cart::where('user_id', Auth::id())->delete();
-
-        // Tampilkan halaman sukses
         return view('user.payment.success');
     }
 
@@ -100,7 +80,6 @@ class PaymentController extends Controller
             $cartItems = Cart::with('menu')->where('user_id', $user->id)->get();
 
             if ($cartItems->isEmpty()) {
-                Log::warning('Checkout cash gagal: keranjang kosong.');
                 return response()->json([
                     'success' => false,
                     'message' => 'Keranjang kamu kosong.'
@@ -121,10 +100,8 @@ class PaymentController extends Controller
                 'status' => 'pending',
                 'payment_status' => Constant::PAYMENT_STATUS['UNPAID'],
                 'total_price' => $total,
-                'invoice' => 'INV-' . time(),
+                'invoice' => 'CASH-' . time() . '-' . $user->id,
             ]);
-
-            Log::info('Order cash berhasil dibuat', ['order_id' => $order->id]);
 
             foreach ($cartItems as $item) {
                 OrderItem::create([
@@ -136,10 +113,7 @@ class PaymentController extends Controller
             }
 
             Cart::where('user_id', $user->id)->delete();
-
             DB::commit();
-
-            Log::info('Checkout cash berhasil', ['user_id' => $user->id, 'order_id' => $order->id]);
 
             return response()->json([
                 'success' => true,
@@ -147,10 +121,7 @@ class PaymentController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Checkout cash error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('Checkout cash error: ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,

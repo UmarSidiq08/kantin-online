@@ -25,6 +25,7 @@ class OrderController extends Controller
         }
 
         $orders = $ordersQuery->latest()->get();
+        
 
         return view('admin.orders.index', compact('orders'));
     }
@@ -102,10 +103,17 @@ class OrderController extends Controller
 
     public function markAsCompleted(Order $order)
     {
-        $order->update([
+        $updateData = [
             'status' => Constant::ORDER_STATUS['SELESAI'],
             'admin_deleted' => true,
-        ]);
+        ];
+
+        // Jika cash dan belum dibayar, tandai sebagai paid
+        if ($order->payment_method === 'cash' && $order->payment_status === 'unpaid') {
+            $updateData['payment_status'] = 'paid';
+        }
+
+        $order->update($updateData);
 
         $log = $order->logs()->create([
             'order_id'    => $order->id,
@@ -120,7 +128,7 @@ class OrderController extends Controller
             $item->update(['orderlog_id' => $log->id]);
         }
 
-        return back()->with('success', 'Pesanan ditandai selesai dan disembunyikan dari daftar.');
+        return response()->json(['success' => true, 'message' => 'Pesanan ditandai selesai']);
     }
 
 

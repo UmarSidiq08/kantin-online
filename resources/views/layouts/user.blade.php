@@ -23,6 +23,32 @@
 </head>
 @push('styles')
     <style>
+        /* sederhanakan styling bintang; gunakan Tailwind + sedikit CSS */
+        .star-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+
+        .star-icon {
+            width: 20px;
+            height: 20px;
+            fill: #d1d5db;
+        }
+
+        /* default gray-300 */
+        .star-icon.active {
+            fill: #f59e0b;
+        }
+
+        /* amber-500 */
+        .rating-info {
+            font-size: .9rem;
+            color: #6b7280;
+        }
+    </style>
+    <style>
         @keyframes checkmark {
             0% {
                 transform: scale(0);

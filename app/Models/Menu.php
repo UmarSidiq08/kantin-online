@@ -17,4 +17,5 @@ class Menu extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+   
 }

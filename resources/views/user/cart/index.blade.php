@@ -158,7 +158,7 @@
 @endsection
 
 @section('script')
-    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}">
+    <script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}">
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
@@ -174,12 +174,12 @@
         @endif
     </script>
     <script>
-        // Script checkout yang sudah ada (tidak diubah)
+        // Updated checkout script - menghilangkan callback view dependency
         document.getElementById('btnCheckout').addEventListener('click', function() {
             const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
 
             if (selectedMethod === 'cash') {
-                // Checkout metode tunai → gunakan route ke checkoutCash
+                // Checkout metode tunai
                 fetch('{{ route('user.checkout.cash') }}', {
                         method: 'POST',
                         headers: {
@@ -204,7 +204,7 @@
                     });
 
             } else {
-                // Checkout via Midtrans Snap
+                // Checkout via Midtrans Snap - TANPA callback view
                 fetch('{{ route('user.checkout') }}', {
                         method: 'POST',
                         headers: {
@@ -220,16 +220,24 @@
                         if (data.snap_token) {
                             snap.pay(data.snap_token, {
                                 onSuccess: function(result) {
+                                    // Pembayaran berhasil - order akan dibuat via callback
+                                    alert("Pembayaran berhasil! Pesanan Anda sedang diproses.");
                                     window.location.href = "{{ route('user.payment.success') }}";
                                 },
                                 onPending: function(result) {
-                                    window.location.href = "{{ route('user.payment.success') }}";
+                                    // Pembayaran pending - order tidak dibuat, cart tetap ada
+                                    alert("Pembayaran sedang diproses. Silakan selesaikan pembayaran untuk melanjutkan pesanan.");
+                                    window.location.reload(); // Reload cart page
                                 },
                                 onError: function(result) {
-                                    alert('Pembayaran gagal.');
+                                    // Pembayaran gagal - order tidak dibuat, cart tetap ada
+                                    alert('Pembayaran gagal. Keranjang Anda masih tersimpan, silakan coba lagi.');
+                                    window.location.reload(); // Reload cart page
                                 },
                                 onClose: function() {
-                                    alert('Kamu menutup pembayaran sebelum selesai.');
+                                    // User tutup popup - order tidak dibuat, cart tetap ada
+                                    alert('Pembayaran dibatalkan. Keranjang Anda masih tersimpan.');
+                                    // Tidak perlu reload, user masih di halaman cart
                                 }
                             });
                         } else {

@@ -16,6 +16,8 @@ use App\Http\Controllers\Admin\PremiumController;
 
 
 
+
+Route::post('/premium/callback', [PremiumController::class, 'callback'])->name('callback');
 Route::get('/', function () {
     return view('auth.login');
 });
@@ -28,7 +30,6 @@ Route::middleware('auth')->group(function () {
         Route::patch('/profile', 'update')->name('profile.update');
         Route::delete('/profile', 'destroy')->name('profile.destroy');
     });
-
     Route::middleware(['role:admin', 'can:canteen.owner'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/riwayat-pesanan', [OrderController::class, 'logHistory'])->name('logs');
@@ -61,7 +62,8 @@ Route::middleware('auth')->group(function () {
         Route::prefix('premium')->name('premium.')->controller(PremiumController::class)->group(function () {
             Route::get('/', 'show')->name('show');
             Route::post('/', 'pay')->name('pay');
-            Route::post('/premium/callback', 'callback');
+            // Route::post('/premium/callback', 'callback');
+
 
         });
     });
@@ -74,7 +76,7 @@ Route::middleware('auth')->group(function () {
         });
         Route::controller(PaymentController::class)->group(function () {
             Route::get('/payment/success', 'success')->name('payment.success');
-            Route::get('/payment/pending', 'success')->name('payment.pending');
+            Route::get('/payment/pending', 'pending')->name('payment.pending');
             Route::post('/checkout', 'checkout')->name('checkout');
             Route::post('/checkout/cash', 'checkoutCash')->name('checkout.cash');
         });

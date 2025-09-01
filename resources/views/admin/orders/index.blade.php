@@ -11,7 +11,12 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="orders-container">
             @forelse ($orders as $order)
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 flex flex-col h-full"
+                <div class="@if (
+                    ($order->payment_method === 'digital' && $order->payment_status === 'paid') ||
+                        ($order->payment_method === 'cash' && $order->payment_status === 'paid')) bg-green-50 @elseif($order->payment_method === 'cash' && $order->payment_status === 'unpaid') bg-yellow-50 @else bg-white @endif rounded-lg shadow-sm border-2
+                    @if (
+                        ($order->payment_method === 'digital' && $order->payment_status === 'paid') ||
+                            ($order->payment_method === 'cash' && $order->payment_status === 'paid')) border-green-400 @elseif($order->payment_method === 'cash' && $order->payment_status === 'unpaid') border-yellow-400 @else border-gray-200 @endif hover:shadow-md transition-all duration-200 flex flex-col h-full"
                     data-order-id="{{ $order->id }}">
                     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
                         <div class="flex items-center justify-between">
@@ -53,29 +58,12 @@
                         <div class="mt-auto">
                             @if ($order->status === \App\Constant::ORDER_STATUS['PENDING'])
                                 <div class="space-y-3">
-                                    @if ($order->payment_method === 'cash' && $order->payment_status === 'unpaid')
-                                        {{-- CASH + UNPAID: Tampilkan tombol yang akan memunculkan modal konfirmasi --}}
-                                        <button type="button" id="accept-order-{{ $order->id }}"
-                                            class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center space-x-2">
-                                            @include('partials.icons.check')
-                                            <span>Terima Pesanan (Belum Dibayar)</span>
-                                        </button>
-                                    @elseif ($order->payment_method === 'digital' || ($order->payment_method === 'cash' && $order->payment_status === 'paid'))
-                                        {{-- DIGITAL atau CASH+PAID: Langsung terima --}}
-                                        <button type="button" id="accept-order-{{ $order->id }}"
-                                            class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center space-x-2">
-                                            @include('partials.icons.check')
-                                            <span>
-                                                @if ($order->payment_method === 'cash' && $order->payment_status === 'paid')
-                                                    Terima Pesanan (Cash Sudah Dibayar)
-                                                @elseif($order->payment_method === 'digital' && $order->payment_status === 'paid')
-                                                    Terima Pesanan (Sudah Dibayar)
-                                                @else
-                                                    Terima Pesanan (Belum Dibayar)
-                                                @endif
-                                            </span>
-                                        </button>
-                                    @endif
+                                    {{-- Semua pesanan PENDING menggunakan tombol yang sama --}}
+                                    <button type="button" id="accept-order-{{ $order->id }}"
+                                        class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center space-x-2">
+                                        @include('partials.icons.check')
+                                        <span>Terima Pesanan</span>
+                                    </button>
 
                                     <button type="button" id="reject-order-{{ $order->id }}"
                                         class="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center space-x-2">
@@ -84,13 +72,6 @@
                                     </button>
                                 </div>
                             @elseif ($order->status === \App\Constant::ORDER_STATUS['DIPROSES'])
-                                @if ($order->payment_method === 'cash' && $order->payment_status === 'unpaid')
-                                    <button type="button" id="confirm-payment-{{ $order->id }}"
-                                        class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 mb-3">
-                                        Konfirmasi Pembayaran
-                                    </button>
-                                @endif
-
                                 <button type="button" id="complete-order-{{ $order->id }}"
                                     class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center justify-center space-x-2">
                                     @include('partials.icons.check-simple')
@@ -137,7 +118,6 @@
         </div>
     </div>
 
-
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-3"></div>
 
 @endsection
@@ -166,30 +146,49 @@
                     'bg-green-500 border border-green-600 text-white' :
                     'bg-red-500 border border-red-600 text-white';
 
-
                 const toast = $(`
-        <div class="${toastClass} border px-4 py-3 rounded shadow-md w-72 flex justify-between items-center">
-            <span class="text-sm font-medium">${message}</span>
-            <button class="ml-4 font-bold text-xl leading-none" onclick="$(this).parent().remove()">×</button>
-        </div>
-    `);
+                <div class="${toastClass} border px-4 py-3 rounded shadow-md w-72 flex justify-between items-center">
+                    <span class="text-sm font-medium">${message}</span>
+                    <button class="ml-4 font-bold text-xl leading-none" onclick="$(this).parent().remove()">×</button>
+                    </div>`);
 
                 $('#toast-container').append(toast);
                 setTimeout(() => toast.fadeOut(300, () => toast.remove()), 4000);
             }
 
-
             function removeOrderCard(orderId) {
                 $(`[data-order-id="${orderId}"]`).fadeOut(300, function() {
                     $(this).remove();
                     // Check if no orders left
-                    if ($('#orders-container .bg-white').length === 0) {
+                    if ($('#orders-container [data-order-id]').length === 0) {
                         location.reload();
                     }
                 });
             }
 
-            // Accept Order (Non-cash)
+            // Accept Cash Order - Langsung selesaikan dan tandai paid
+            $(document).on('click', '[id^="accept-cash-order-"]', function() {
+                const orderId = $(this).attr('id').split('-')[3];
+
+                if (!confirm('Terima pesanan ini dan langsung tandai sebagai SELESAI & DIBAYAR?')) return;
+
+                showLoading();
+                $.ajax({
+                    url: `/admin/orders/${orderId}/complete-cash-directly`,
+                    type: 'POST',
+                    success: function(response) {
+                        hideLoading();
+                        showAlert('Pesanan berhasil diterima dan diselesaikan');
+                        removeOrderCard(orderId);
+                    },
+                    error: function(xhr) {
+                        hideLoading();
+                        showAlert('Terjadi kesalahan saat memproses pesanan', 'error');
+                    }
+                });
+            });
+
+            // Accept Order - Normal flow (digital/cash paid)
             $(document).on('click', '[id^="accept-order-"]', function() {
                 const orderId = $(this).attr('id').split('-')[2];
 
@@ -202,54 +201,6 @@
                     success: function(response) {
                         hideLoading();
                         showAlert('Pesanan berhasil diterima dan ditandai sebagai diproses');
-                        location.reload(); // Refresh to show updated status
-                    },
-                    error: function(xhr) {
-                        hideLoading();
-                        showAlert('Terjadi kesalahan saat memproses pesanan', 'error');
-                    }
-                });
-            });
-
-            // Cash Payment - Not Paid
-            $(document).on('click', '[id^="cash-not-paid-"]', function() {
-                const orderId = $(this).attr('id').split('-')[3];
-
-                showLoading();
-                $.ajax({
-                    url: `/admin/orders/${orderId}/mark-processed-cash`,
-                    type: 'POST',
-                    data: {
-                        bayar: 'no'
-                    },
-                    success: function(response) {
-                        hideLoading();
-                        $(`#confirmCashModal-${orderId}`).modal('hide');
-                        showAlert('Pesanan diterima, menunggu pembayaran tunai');
-                        location.reload();
-                    },
-                    error: function(xhr) {
-                        hideLoading();
-                        showAlert('Terjadi kesalahan saat memproses pesanan', 'error');
-                    }
-                });
-            });
-
-            // Cash Payment - Paid
-            $(document).on('click', '[id^="cash-paid-"]', function() {
-                const orderId = $(this).attr('id').split('-')[2];
-
-                showLoading();
-                $.ajax({
-                    url: `/admin/orders/${orderId}/mark-processed-cash`,
-                    type: 'POST',
-                    data: {
-                        bayar: 'yes'
-                    },
-                    success: function(response) {
-                        hideLoading();
-                        $(`#confirmCashModal-${orderId}`).modal('hide');
-                        showAlert('Pesanan diterima dan pembayaran dikonfirmasi');
                         location.reload();
                     },
                     error: function(xhr) {
@@ -277,28 +228,6 @@
                     error: function(xhr) {
                         hideLoading();
                         showAlert('Terjadi kesalahan saat menolak pesanan', 'error');
-                    }
-                });
-            });
-
-            // Confirm Cash Payment
-            $(document).on('click', '[id^="confirm-payment-"]', function() {
-                const orderId = $(this).attr('id').split('-')[2];
-
-                if (!confirm('Konfirmasi bahwa pembayaran tunai telah diterima?')) return;
-
-                showLoading();
-                $.ajax({
-                    url: `/admin/orders/${orderId}/confirm-cash-payment`,
-                    type: 'POST',
-                    success: function(response) {
-                        hideLoading();
-                        showAlert('Pembayaran tunai berhasil dikonfirmasi');
-                        location.reload();
-                    },
-                    error: function(xhr) {
-                        hideLoading();
-                        showAlert('Terjadi kesalahan saat mengkonfirmasi pembayaran', 'error');
                     }
                 });
             });
