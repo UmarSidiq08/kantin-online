@@ -22,6 +22,7 @@ return new class extends Migration
                 ->default(Constant::ORDER_STATUS['PENDING']);
             $table->decimal('total_price', 10, 2)->default(0);
             $table->boolean('admin_deleted')->default(false);
+            $table->string('midtrans_order_id')->nullable();
             $table->timestamps();
         });
     }

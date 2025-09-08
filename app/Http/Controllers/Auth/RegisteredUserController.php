@@ -40,12 +40,15 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'balance' => 0, // Set balance default
         ]);
+
+        // Assign role default 'user' menggunakan Spatie Permission
+        $user->assignRole('user');
 
         event(new Registered($user));
 
-        Auth::login($user);
-
-        return redirect(RouteServiceProvider::HOME);
+        // Tidak login otomatis, redirect ke login dengan pesan sukses
+        return redirect()->route('login')->with('status', 'Registrasi berhasil! Silakan login dengan akun Anda.');
     }
 }

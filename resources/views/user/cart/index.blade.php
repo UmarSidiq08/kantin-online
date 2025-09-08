@@ -131,6 +131,45 @@
                                     </div>
                                 </div>
                             </label>
+
+                            <!-- Balance Payment Option -->
+                            <label
+                                class="flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition-all duration-200 payment-option hover:border-purple-300 {{ Auth::user()->balance <$carts->sum(function ($cart) {return $cart->menu->price * $cart->quantity;})? 'opacity-50 cursor-not-allowed': '' }}"
+                                data-payment="balance">
+                                <input type="radio" name="payment_method" id="payment_balance" value="balance"
+                                    class="hidden"
+                                    {{ Auth::user()->balance <$carts->sum(function ($cart) {return $cart->menu->price * $cart->quantity;})? 'disabled': '' }}>
+                                <div class="flex items-center w-full">
+                                    <div
+                                        class="radio-custom w-5 h-5 border-2 border-gray-300 rounded-full mr-4 flex items-center justify-center transition-all duration-200">
+                                        <div
+                                            class="radio-dot w-2 h-2 bg-white rounded-full opacity-0 transition-opacity duration-200">
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between w-full">
+                                        <div class="flex items-center">
+                                            <span class="text-2xl mr-3">🪙</span>
+                                            <div>
+                                                <div class="payment-text font-medium text-gray-800 text-sm">Saldo Kantin
+                                                </div>
+                                                <div class="text-xs text-gray-500 mt-1">
+                                                    Saldo: Rp {{ number_format(Auth::user()->balance, 0, ',', '.') }}
+                                                    @if (Auth::user()->balance <
+                                                            $carts->sum(function ($cart) {
+                                                                return $cart->menu->price * $cart->quantity;
+                                                            }))
+                                                        <span class="text-red-500 font-medium">(Tidak mencukupi)</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="payment-badge text-purple-600 font-medium text-xs opacity-0 transition-opacity duration-200 bg-purple-50 px-2 py-1 rounded-full">
+                                            ✓ Dipilih
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
@@ -158,7 +197,7 @@
 @endsection
 
 @section('script')
-    <script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}">
+    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}">
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
@@ -174,7 +213,61 @@
         @endif
     </script>
     <script>
-        // Updated checkout script - menghilangkan callback view dependency
+        // Payment option selection
+        document.querySelectorAll('.payment-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const paymentType = this.dataset.payment;
+                const radio = this.querySelector('input[type="radio"]');
+
+                // Skip if disabled (insufficient balance)
+                if (radio.disabled) return;
+
+                // Reset all options
+                document.querySelectorAll('.payment-option').forEach(opt => {
+                    const optRadio = opt.querySelector('.radio-custom');
+                    const optDot = opt.querySelector('.radio-dot');
+                    const optBadge = opt.querySelector('.payment-badge');
+                    const optText = opt.querySelector('.payment-text');
+
+                    optRadio.classList.remove('border-green-500', 'bg-green-500', 'border-blue-500',
+                        'bg-blue-500', 'border-purple-500', 'bg-purple-500');
+                    optRadio.classList.add('border-gray-300');
+                    optDot.classList.add('opacity-0');
+                    optBadge.classList.add('opacity-0');
+                    optText.classList.remove('text-green-700', 'text-blue-700', 'text-purple-700');
+                    optText.classList.add('text-gray-800');
+                });
+
+                // Activate selected option
+                const radioCustom = this.querySelector('.radio-custom');
+                const radioDot = this.querySelector('.radio-dot');
+                const badge = this.querySelector('.payment-badge');
+                const text = this.querySelector('.payment-text');
+
+                radio.checked = true;
+                radioDot.classList.remove('opacity-0');
+                badge.classList.remove('opacity-0');
+
+                if (paymentType === 'cash') {
+                    radioCustom.classList.remove('border-gray-300');
+                    radioCustom.classList.add('border-green-500', 'bg-green-500');
+                    text.classList.remove('text-gray-800');
+                    text.classList.add('text-green-700');
+                } else if (paymentType === 'digital') {
+                    radioCustom.classList.remove('border-gray-300');
+                    radioCustom.classList.add('border-blue-500', 'bg-blue-500');
+                    text.classList.remove('text-gray-800');
+                    text.classList.add('text-blue-700');
+                } else if (paymentType === 'balance') {
+                    radioCustom.classList.remove('border-gray-300');
+                    radioCustom.classList.add('border-purple-500', 'bg-purple-500');
+                    text.classList.remove('text-gray-800');
+                    text.classList.add('text-purple-700');
+                }
+            });
+        });
+
+        // Checkout functionality
         document.getElementById('btnCheckout').addEventListener('click', function() {
             const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
 
@@ -203,8 +296,36 @@
                         alert('Terjadi kesalahan saat checkout tunai.');
                     });
 
+            } else if (selectedMethod === 'balance') {
+                // Checkout dengan saldo
+                fetch('{{ route('user.checkout.balance') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            payment_method: selectedMethod
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            toastr.success(data.message, 'Pembayaran Berhasil 🚀');
+                            setTimeout(() => {
+                                window.location.href = "{{ route('user.payment.success') }}";
+                            }, 1500);
+                        } else {
+                            toastr.error(data.message || 'Checkout dengan saldo gagal.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        toastr.error('Terjadi kesalahan saat checkout dengan saldo.');
+                    });
+
             } else {
-                // Checkout via Midtrans Snap - TANPA callback view
+                // Checkout via Midtrans Snap
                 fetch('{{ route('user.checkout') }}', {
                         method: 'POST',
                         headers: {
@@ -220,24 +341,29 @@
                         if (data.snap_token) {
                             snap.pay(data.snap_token, {
                                 onSuccess: function(result) {
-                                    // Pembayaran berhasil - order akan dibuat via callback
-                                    alert("Pembayaran berhasil! Pesanan Anda sedang diproses.");
-                                    window.location.href = "{{ route('user.payment.success') }}";
+                                    toastr.success(
+                                        "Pembayaran berhasil! Pesanan Anda sedang diproses.");
+                                    setTimeout(() => {
+                                        window.location.href =
+                                            "{{ route('user.payment.success') }}";
+                                    }, 1500);
                                 },
                                 onPending: function(result) {
-                                    // Pembayaran pending - order tidak dibuat, cart tetap ada
-                                    alert("Pembayaran sedang diproses. Silakan selesaikan pembayaran untuk melanjutkan pesanan.");
-                                    window.location.reload(); // Reload cart page
+                                    // Treat pending sama seperti close - kembali ke cart tanpa action
+                                    toastr.info(
+                                        "Pembayaran belum selesai. Keranjang Anda masih tersimpan."
+                                        );
+                                    // Tidak ada redirect, tetap di halaman cart
                                 },
                                 onError: function(result) {
-                                    // Pembayaran gagal - order tidak dibuat, cart tetap ada
-                                    alert('Pembayaran gagal. Keranjang Anda masih tersimpan, silakan coba lagi.');
-                                    window.location.reload(); // Reload cart page
+                                    toastr.error('Pembayaran gagal. Silakan coba lagi.');
+                                    // Tetap di halaman cart
                                 },
                                 onClose: function() {
-                                    // User tutup popup - order tidak dibuat, cart tetap ada
-                                    alert('Pembayaran dibatalkan. Keranjang Anda masih tersimpan.');
-                                    // Tidak perlu reload, user masih di halaman cart
+                                    toastr.info(
+                                        'Pembayaran dibatalkan. Keranjang Anda masih tersimpan.'
+                                        );
+                                    // Tetap di halaman cart
                                 }
                             });
                         } else {
@@ -251,6 +377,7 @@
             }
         });
 
+        // Delete cart item
         $('.btnDeleteCart').on('click', function(e) {
             e.preventDefault();
 

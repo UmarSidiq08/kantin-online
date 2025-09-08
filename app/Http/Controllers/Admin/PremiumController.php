@@ -86,75 +86,123 @@ class PremiumController extends Controller
     }
 
     public function callback(Request $request)
-    {
-        try {
-            Config::$serverKey = config('midtrans.server_key');
-            Config::$isProduction = config('midtrans.is_production');
+{
+    try {
+        Config::$serverKey = config('midtrans.server_key');
+        Config::$isProduction = config('midtrans.is_production');
 
-            $notif = new Notification();
-            $transactionStatus = $notif->transaction_status;
-            $orderId = $notif->order_id;
+        $notif = new Notification();
+        $transactionStatus = $notif->transaction_status;
+        $orderId = $notif->order_id;
 
-            if (str_starts_with($orderId, 'PREMIUM-')) {
-                $canteen = Canteen::where('midtrans_order_id', $orderId)->first();
+        if (str_starts_with($orderId, 'PREMIUM-')) {
+            $canteen = Canteen::where('midtrans_order_id', $orderId)->first();
 
-                if (!$canteen) {
-                    Log::error('Canteen not found for premium callback', ['order_id' => $orderId]);
-                    return response()->json(['message' => 'Canteen not found'], 404);
-                }
+            if (!$canteen) {
+                Log::error('Canteen not found for premium callback', ['order_id' => $orderId]);
+                return response()->json(['message' => 'Canteen not found'], 404);
+            }
 
-                if (in_array($transactionStatus, ['capture', 'settlement'])) {
-                    $canteen->is_premium = true;
-                    $canteen->save();
-                }
+            if (in_array($transactionStatus, ['capture', 'settlement'])) {
+                $canteen->is_premium = true;
+                $canteen->save();
+            }
 
-            } elseif (str_starts_with($orderId, 'ORDER-')) {
-                if (in_array($transactionStatus, ['capture', 'settlement'])) {
-                    try {
-                        $cartData = json_decode($notif->custom_field1, true);
-                        $canteenId = $notif->custom_field2;
-                        $userId = $notif->custom_field3;
+        } elseif (str_starts_with($orderId, 'TOPUP-')) {
+            // Handler untuk top-up saldo
+            if (in_array($transactionStatus, ['capture', 'settlement'])) {
+                try {
+                    $userId = $notif->custom_field2;
+                    $amount = $notif->custom_field3;
 
-                        if (!$cartData || !$canteenId || !$userId) {
-                            Log::error('Missing cart data in callback', ['order_id' => $orderId]);
-                            return response()->json(['message' => 'Missing cart data'], 400);
-                        }
-
-                        DB::beginTransaction();
-
-                        $order = Order::create([
-                            'user_id' => $userId,
-                            'canteen_id' => $canteenId,
-                            'payment_method' => 'digital',
-                            'status' => Constant::ORDER_STATUS['PENDING'],
-                            'payment_status' => Constant::PAYMENT_STATUS['PAID'],
-                            'total_price' => $notif->gross_amount,
-                            'invoice' => $orderId,
-                        ]);
-
-                        foreach ($cartData as $item) {
-                            OrderItem::create([
-                                'order_id' => $order->id,
-                                'menu_id' => $item['menu_id'],
-                                'quantity' => $item['quantity'],
-                                'price' => $item['price'],
-                            ]);
-                        }
-
-                        Cart::where('user_id', $userId)->delete();
-                        DB::commit();
-
-                    } catch (\Exception $e) {
-                        DB::rollBack();
-                        Log::error('Error creating order after payment: ' . $e->getMessage());
+                    if (!$userId || !$amount) {
+                        Log::error('Missing top-up data in callback', ['order_id' => $orderId]);
+                        return response()->json(['message' => 'Missing top-up data'], 400);
                     }
+
+                    /** @var User $user */
+                    $user = User::find($userId);
+
+                    if (!$user) {
+                        Log::error('User not found for top-up callback', ['user_id' => $userId, 'order_id' => $orderId]);
+                        return response()->json(['message' => 'User not found'], 404);
+                    }
+
+                    DB::beginTransaction();
+
+                    // Gunakan method addBalance dari model User
+                    $user->addBalance(
+                        $amount,
+                        "Top up saldo via Midtrans - #{$orderId}",
+                        $orderId
+                    );
+
+                    DB::commit();
+
+                    Log::info('Top-up successful', [
+                        'user_id' => $userId,
+                        'amount' => $amount,
+                        'order_id' => $orderId,
+                        'new_balance' => $user->balance
+                    ]);
+
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Error processing top-up after payment: ' . $e->getMessage(), [
+                        'order_id' => $orderId,
+                        'user_id' => $userId ?? 'unknown',
+                        'amount' => $amount ?? 'unknown'
+                    ]);
                 }
             }
 
-            return response()->json(['message' => 'Callback handled successfully']);
-        } catch (\Exception $e) {
-            Log::error('Midtrans callback error: ' . $e->getMessage());
-            return response()->json(['message' => 'Error processing callback'], 500);
+        } elseif (str_starts_with($orderId, 'ORDER-')) {
+            if (in_array($transactionStatus, ['capture', 'settlement'])) {
+                try {
+                    $cartData = json_decode($notif->custom_field1, true);
+                    $canteenId = $notif->custom_field2;
+                    $userId = $notif->custom_field3;
+
+                    if (!$cartData || !$canteenId || !$userId) {
+                        Log::error('Missing cart data in callback', ['order_id' => $orderId]);
+                        return response()->json(['message' => 'Missing cart data'], 400);
+                    }
+
+                    DB::beginTransaction();
+
+                    $order = Order::create([
+                        'user_id' => $userId,
+                        'canteen_id' => $canteenId,
+                        'payment_method' => 'digital',
+                        'status' => Constant::ORDER_STATUS['PENDING'],
+                        'payment_status' => Constant::PAYMENT_STATUS['PAID'],
+                        'total_price' => $notif->gross_amount,
+                        'invoice' => $orderId,
+                    ]);
+
+                    foreach ($cartData as $item) {
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'menu_id' => $item['menu_id'],
+                            'quantity' => $item['quantity'],
+                            'price' => $item['price'],
+                        ]);
+                    }
+
+                    Cart::where('user_id', $userId)->delete();
+                    DB::commit();
+
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Error creating order after payment: ' . $e->getMessage());
+                }
+            }
         }
+
+        return response()->json(['message' => 'Callback handled successfully']);
+    } catch (\Exception $e) {
+        Log::error('Midtrans callback error: ' . $e->getMessage());
+        return response()->json(['message' => 'Error processing callback'], 500);
     }
+}
 }

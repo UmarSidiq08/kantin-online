@@ -8,6 +8,7 @@ use App\Http\Controllers\User\UserOrderController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\BalanceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\LogOrderController;
@@ -22,8 +23,15 @@ Route::get('/', function () {
     return view('auth.login');
 });
 require __DIR__ . '/auth.php';
+Route::get('/register', function () {
+    return view('auth.register');
+});
+require __DIR__ . '/auth.php';
 Route::post('/premium/callback', [PremiumController::class, 'callback']);
 Route::middleware('auth')->group(function () {
+
+             Route::post('/balance/topup', [PaymentController::class, 'topUpBalance'])->name('user.balance.topup');
+             Route::post('/checkout/balance', [PaymentController::class, 'topUpBalance'])->name('user.checkout.balance');
 
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'edit')->name('profile.edit');
@@ -62,9 +70,6 @@ Route::middleware('auth')->group(function () {
         Route::prefix('premium')->name('premium.')->controller(PremiumController::class)->group(function () {
             Route::get('/', 'show')->name('show');
             Route::post('/', 'pay')->name('pay');
-            // Route::post('/premium/callback', 'callback');
-
-
         });
     });
     Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {
@@ -77,8 +82,12 @@ Route::middleware('auth')->group(function () {
         Route::controller(PaymentController::class)->group(function () {
             Route::get('/payment/success', 'success')->name('payment.success');
             Route::get('/payment/pending', 'pending')->name('payment.pending');
+            Route::get('/payment/finish', 'handleFinish')->name('payment.finish');
             Route::post('/checkout', 'checkout')->name('checkout');
             Route::post('/checkout/cash', 'checkoutCash')->name('checkout.cash');
+
+            //  Route::post('/balance/topup', 'topUpBalance')->name('user.balance.topup');
+            //  Route::post('/checkout/balance', 'checkoutBalance')->name('user.checkout.balance');
         });
 
         Route::prefix('orders')->name('orders.')->controller(UserOrderController::class)->group(function () {
