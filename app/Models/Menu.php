@@ -17,5 +17,19 @@ class Menu extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
-   
+    // Tambah ke Model Menu yang udah ada
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
+    }
+
+    public function averageRating()
+    {
+        return $this->ratings()->avg('rating') ?: 0;
+    }
+
+    public function totalRatings()
+    {
+        return $this->ratings()->count();
+    }
 }

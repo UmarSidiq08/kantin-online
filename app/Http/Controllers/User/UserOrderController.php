@@ -27,11 +27,58 @@ class UserOrderController extends Controller
 
         $query = Menu::where('canteen_id', $canteenId);
 
+        // Filter berdasarkan kategori
         if ($request->filled('category') && $request->category !== 'semua') {
             $query->where('category', $request->category);
         }
 
-        $menus = $query->get();
+        // Filter berdasarkan sorting
+        $sort = $request->get('sort', 'default');
+
+        switch ($sort) {
+            case 'terpopuler':
+                // Ambil semua menu dulu
+                $menus = $query->get();
+
+                // Ambil data penjualan
+                $salesData = OrderItem::select('menu_id', DB::raw('SUM(quantity) as total_sold'))
+                    ->whereHas('order', function ($orderQuery) use ($canteenId) {
+                        $orderQuery->where('canteen_id', $canteenId)
+                            ->where('status', 'selesai');
+                    })
+                    ->whereIn('menu_id', $menus->pluck('id'))
+                    ->groupBy('menu_id')
+                    ->pluck('total_sold', 'menu_id');
+
+                // Tambahkan informasi penjualan dan urutkan
+                $menus = $menus->map(function ($menu) use ($salesData) {
+                    $menu->total_sold = $salesData[$menu->id] ?? 0;
+                    return $menu;
+                })->sortByDesc('total_sold')->values(); // values() untuk reset index
+
+                break;
+
+            case 'harga_rendah':
+                $menus = $query->orderBy('price', 'asc')->get();
+                break;
+
+            case 'harga_tinggi':
+                $menus = $query->orderBy('price', 'desc')->get();
+                break;
+
+            case 'nama_az':
+                $menus = $query->orderBy('name', 'asc')->get();
+                break;
+
+            case 'nama_za':
+                $menus = $query->orderBy('name', 'desc')->get();
+                break;
+
+            default:
+                $menus = $query->orderBy('created_at', 'desc')->get();
+                break;
+        }
+
         $canteen = Canteen::find($canteenId);
 
         return view('user.orders.index', compact('menus', 'canteen'));

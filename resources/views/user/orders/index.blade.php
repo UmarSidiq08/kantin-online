@@ -66,36 +66,78 @@
             </div>
 
             {{-- Filter & Cart Button Section --}}
-            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                {{-- Category Filter --}}
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-2 text-sm font-medium text-gray-600">
-                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z">
-                            </path>
-                        </svg>
-                        Filter:
+            {{-- Filter & Cart Button Section --}}
+            <div class="flex flex-col lg:flex-row justify-between items-center mb-8 gap-4">
+                {{-- Filter Section --}}
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    {{-- Category Filter --}}
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 text-sm font-medium text-gray-600">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z">
+                                </path>
+                            </svg>
+                            Kategori:
+                        </div>
+                        <form id="category-form" method="GET" action="{{ route('user.orders.index') }}">
+                            <input type="hidden" name="sort" value="{{ request('sort', 'default') }}">
+                            <select name="category" id="category-select"
+                                onchange="document.getElementById('category-form').submit()"
+                                class="pl-4 pr-10 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 cursor-pointer hover:border-gray-300 text-gray-700 font-medium min-w-[160px]">
+                                <option value="semua"
+                                    {{ request('category') == 'semua' || request('category') == null ? 'selected' : '' }}>
+                                    🍽️ Semua Menu
+                                </option>
+                                <option value="makanan" {{ request('category') == 'makanan' ? 'selected' : '' }}>
+                                    🍛 Makanan
+                                </option>
+                                <option value="minuman" {{ request('category') == 'minuman' ? 'selected' : '' }}>
+                                    🥤 Minuman
+                                </option>
+                                <option value="snack" {{ request('category') == 'snack' ? 'selected' : '' }}>
+                                    🍿 Snack
+                                </option>
+                            </select>
+                        </form>
                     </div>
-                    <form id="category-form" method="GET" action="{{ route('user.orders.index') }}">
-                        <select name="category" id="category-select"
-                            onchange="document.getElementById('category-form').submit()"
-                            class="pl-4 pr-10 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 cursor-pointer hover:border-gray-300 text-gray-700 font-medium min-w-[160px]">
-                            <option value="semua"
-                                {{ request('category') == 'semua' || request('category') == null ? 'selected' : '' }}>
-                                🍽️ Semua Menu
-                            </option>
-                            <option value="makanan" {{ request('category') == 'makanan' ? 'selected' : '' }}>
-                                🍛 Makanan
-                            </option>
-                            <option value="minuman" {{ request('category') == 'minuman' ? 'selected' : '' }}>
-                                🥤 Minuman
-                            </option>
-                            <option value="snack" {{ request('category') == 'snack' ? 'selected' : '' }}>
-                                🍿 Snack
-                            </option>
-                        </select>
-                    </form>
+
+                    {{-- Sort Filter --}}
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 text-sm font-medium text-gray-600">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V5a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2z">
+                                </path>
+                            </svg>
+                            Urutkan:
+                        </div>
+                        <form id="sort-form" method="GET" action="{{ route('user.orders.index') }}">
+                            <input type="hidden" name="category" value="{{ request('category', 'semua') }}">
+                            <select name="sort" id="sort-select" onchange="document.getElementById('sort-form').submit()"
+                                class="pl-4 pr-10 py-2 bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 cursor-pointer hover:border-gray-300 text-gray-700 font-medium min-w-[160px]">
+                                <option value="default"
+                                    {{ request('sort') == 'default' || request('sort') == null ? 'selected' : '' }}>
+                                    📋 Default
+                                </option>
+                                <option value="terpopuler" {{ request('sort') == 'terpopuler' ? 'selected' : '' }}>
+                                    🔥 Terpopuler
+                                </option>
+                                <option value="harga_rendah" {{ request('sort') == 'harga_rendah' ? 'selected' : '' }}>
+                                    💰 Harga Terendah
+                                </option>
+                                <option value="harga_tinggi" {{ request('sort') == 'harga_tinggi' ? 'selected' : '' }}>
+                                    💎 Harga Tertinggi
+                                </option>
+                                <option value="nama_az" {{ request('sort') == 'nama_az' ? 'selected' : '' }}>
+                                    🔤 A-Z
+                                </option>
+                                <option value="nama_za" {{ request('sort') == 'nama_za' ? 'selected' : '' }}>
+                                    🔤 Z-A
+                                </option>
+                            </select>
+                        </form>
+                    </div>
                 </div>
 
                 {{-- Cart Button --}}
@@ -174,18 +216,40 @@
                                 </span>
                             </div>
 
+                            {{-- Rating Display --}}
+                            <div class="mb-3">
+                                @if ($menu->totalRatings() > 0)
+                                    <div class="flex items-center space-x-2">
+                                        <div class="flex">
+                                            @for ($i = 1; $i <= 5; $i++)
+                                                <svg class="w-4 h-4 {{ $i <= floor($menu->averageRating()) ? 'text-yellow-400' : 'text-gray-300' }} fill-current"
+                                                    viewBox="0 0 20 20">
+                                                    <path
+                                                        d="M10 15l-5.878 3.09 1.123-6.545L0 6.91l6.564-.955L10 0l3.436 5.955L20 6.91l-5.245 4.635L15.878 18z" />
+                                                </svg>
+                                            @endfor
+                                        </div>
+                                        <span class="text-sm text-gray-600">{{ number_format($menu->averageRating(), 1) }}
+                                            ({{ $menu->totalRatings() }})</span>
+                                    </div>
+                                @else
+                                    <span class="text-sm text-gray-400">Belum ada ulasan</span>
+                                @endif
+                            </div>
+
                             {{-- Quantity Controls --}}
                             <div class="flex items-center justify-center gap-3 bg-gray-50 rounded-xl p-2">
                                 <button type="button" onclick="decrementQty({{ $menu->id }})"
                                     class="w-8 h-8 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-red-500 hover:bg-red-50 hover:border-red-200 transition-all duration-200 shadow-sm">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M20 12H4">
                                         </path>
                                     </svg>
                                 </button>
 
-                                <input type="number" name="quantities[{{ $menu->id }}]" id="qty-{{ $menu->id }}"
-                                    value="0" min="0"
+                                <input type="number" name="quantities[{{ $menu->id }}]"
+                                    id="qty-{{ $menu->id }}" value="0" min="0"
                                     class="w-16 h-8 text-center font-bold border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
 
                                 <button type="button" onclick="incrementQty({{ $menu->id }})"

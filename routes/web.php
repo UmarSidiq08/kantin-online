@@ -8,6 +8,7 @@ use App\Http\Controllers\User\UserOrderController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\RatingController;
 use App\Http\Controllers\BalanceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
@@ -30,8 +31,9 @@ require __DIR__ . '/auth.php';
 Route::post('/premium/callback', [PremiumController::class, 'callback']);
 Route::middleware('auth')->group(function () {
 
-             Route::post('/balance/topup', [PaymentController::class, 'topUpBalance'])->name('user.balance.topup');
-             Route::post('/checkout/balance', [PaymentController::class, 'topUpBalance'])->name('user.checkout.balance');
+    Route::post('/balance/topup', [PaymentController::class, 'topUpBalance'])->name('user.balance.topup');
+    Route::post('/checkout/balance', [PaymentController::class, 'checkoutBalance'])->name('user.checkout.balance');
+    Route::post('/ratings', [RatingController::class, 'store'])->middleware('auth');
 
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'edit')->name('profile.edit');

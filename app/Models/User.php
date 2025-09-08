@@ -51,6 +51,10 @@ class User extends Authenticatable
     {
         return $this->hasOne(Canteen::class);
     }
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
+    }
 
     public function balanceTransactions()
     {

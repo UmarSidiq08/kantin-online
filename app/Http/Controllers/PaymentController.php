@@ -77,10 +77,24 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function success(Request $request)
-    {
-        return view('user.payment.success');
+   public function success(Request $request)
+{
+    $orderId = session('current_order_id');
+
+    if ($orderId) {
+        $order = Order::with(['items.menu'])->find($orderId);
+        session()->forget('current_order_id'); // Clear session setelah dipakai
+    } else {
+        // Fallback untuk Midtrans atau akses langsung
+        $order = Order::with(['items.menu'])
+            ->where('user_id', auth()->id())
+            ->where('payment_status', Constant::PAYMENT_STATUS['PAID'])
+            ->latest()
+            ->first();
     }
+
+    return view('user.payment.success', compact('order'));
+}
 
     public function checkoutCash(Request $request)
     {
@@ -123,6 +137,7 @@ class PaymentController extends Controller
 
             Cart::where('user_id', $user->id)->delete();
             DB::commit();
+            session(['current_order_id' => $order->id]);
 
             return response()->json([
                 'success' => true,
@@ -141,7 +156,7 @@ class PaymentController extends Controller
     /**
      * Checkout dengan saldo kantin
      */
-    public function checkoutBalance(Request $request)
+ public function checkoutBalance(Request $request)
     {
         try {
             /** @var User $user */
@@ -203,6 +218,7 @@ class PaymentController extends Controller
             Cart::where('user_id', $user->id)->delete();
 
             DB::commit();
+            session(['current_order_id' => $order->id]);
 
             return response()->json([
                 'success' => true,
@@ -217,6 +233,7 @@ class PaymentController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Top up saldo via Midtrans
