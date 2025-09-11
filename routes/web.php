@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/balance/topup', [PaymentController::class, 'topUpBalance'])->name('user.balance.topup');
     Route::post('/checkout/balance', [PaymentController::class, 'checkoutBalance'])->name('user.checkout.balance');
     Route::post('/ratings', [RatingController::class, 'store'])->middleware('auth');
+    Route::get('/menus/{menu}/reviews', [RatingController::class, 'show'])->name('menus.reviews');
 
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'edit')->name('profile.edit');

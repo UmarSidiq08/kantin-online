@@ -27,4 +27,8 @@ class Order extends Model
     {
         return $this->hasMany(OrderLog::class);
     }
+     public function ratings()
+    {
+        return $this->hasMany(Rating::class);
+    }
 }

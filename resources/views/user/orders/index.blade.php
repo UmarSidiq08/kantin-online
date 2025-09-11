@@ -216,24 +216,39 @@
                                 </span>
                             </div>
 
-                            {{-- Rating Display --}}
+                            {{-- Rating Display with Link to Reviews --}}
                             <div class="mb-3">
                                 @if ($menu->totalRatings() > 0)
-                                    <div class="flex items-center space-x-2">
-                                        <div class="flex">
-                                            @for ($i = 1; $i <= 5; $i++)
-                                                <svg class="w-4 h-4 {{ $i <= floor($menu->averageRating()) ? 'text-yellow-400' : 'text-gray-300' }} fill-current"
-                                                    viewBox="0 0 20 20">
-                                                    <path
-                                                        d="M10 15l-5.878 3.09 1.123-6.545L0 6.91l6.564-.955L10 0l3.436 5.955L20 6.91l-5.245 4.635L15.878 18z" />
-                                                </svg>
-                                            @endfor
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <div class="flex">
+                                                @for ($i = 1; $i <= 5; $i++)
+                                                    <svg class="w-4 h-4 {{ $i <= floor($menu->averageRating()) ? 'text-yellow-400' : 'text-gray-300' }} fill-current"
+                                                        viewBox="0 0 20 20">
+                                                        <path
+                                                            d="M10 15l-5.878 3.09 1.123-6.545L0 6.91l6.564-.955L10 0l3.436 5.955L20 6.91l-5.245 4.635L15.878 18z" />
+                                                    </svg>
+                                                @endfor
+                                            </div>
+                                            <span
+                                                class="text-sm text-gray-600">{{ number_format($menu->averageRating(), 1) }}
+                                                ({{ $menu->totalRatings() }})</span>
                                         </div>
-                                        <span class="text-sm text-gray-600">{{ number_format($menu->averageRating(), 1) }}
-                                            ({{ $menu->totalRatings() }})</span>
+
+                                        {{-- Link to see all reviews --}}
+                                        <a href="{{ route('menus.reviews', $menu->id) }}"
+                                            class="text-xs text-blue-500 hover:text-blue-700 font-medium hover:underline transition-colors">
+                                            Lihat Semua
+                                        </a>
                                     </div>
                                 @else
-                                    <span class="text-sm text-gray-400">Belum ada ulasan</span>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-400">Belum ada ulasan</span>
+                                        <a href="{{ route('menus.reviews', $menu->id) }}"
+                                            class="text-xs text-blue-500 hover:text-blue-700 font-medium hover:underline transition-colors">
+                                            Beri Ulasan
+                                        </a>
+                                    </div>
                                 @endif
                             </div>
 

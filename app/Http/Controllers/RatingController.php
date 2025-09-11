@@ -5,9 +5,23 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Rating;
 use App\Models\Order;
+use App\Models\Menu;
+
 
 class RatingController extends Controller
 {
+    public function show(Menu $menu)
+    {
+        // Load reviews dengan relasi user dan order untuk mendapatkan informasi lengkap
+        $menu->load([
+            'ratings' => function($query) {
+                $query->with(['user', 'order'])
+                      ->orderBy('created_at', 'desc');
+            }
+        ]);
+
+        return view('user.menus.reviews', compact('menu'));
+    }
      public function store(Request $request) {
         $validated = $request->validate([
             'menu_id' => 'required|exists:menus,id',
