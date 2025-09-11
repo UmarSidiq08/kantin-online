@@ -113,9 +113,6 @@ class LaporanPenjualanController extends Controller
         ));
     }
 
-
-
-
     public function data(Request $request)
     {
         $canteenId = Auth::user()->canteen->id;

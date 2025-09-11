@@ -55,6 +55,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/{order}/complete', 'markAsCompleted')->name('complete-and-delete');
             Route::post('/{order}/reject', 'markAsRejected')->name('reject');
             Route::post('/rejected-delete/{order}', 'deleteRejected')->name('rejected-delete');
+
+            Route::post('/bulk/accept-all', 'bulkAcceptAll')->name('bulk.accept-all');
+            Route::post('/bulk/reject-all', 'bulkRejectAll')->name('bulk.reject-all');
         });
         Route::prefix('menus')->name('menu.')->controller(MenuController::class)->group(function () {
             Route::get('/', 'index')->name('index');

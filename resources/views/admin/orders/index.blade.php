@@ -5,8 +5,47 @@
 @section('content')
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="mb-8">
-            <h1 class="text-2xl font-bold text-gray-900">Daftar Pesanan</h1>
-            <p class="text-gray-600 mt-1">Kelola semua pesanan yang masuk</p>
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Daftar Pesanan</h1>
+                    <p class="text-gray-600 mt-1">Kelola semua pesanan yang masuk</p>
+                </div>
+
+                <!-- Bulk Actions -->
+                @if($orders->where('status', \App\Constant::ORDER_STATUS['PENDING'])->count() > 1)
+                <div class="flex space-x-3">
+                    <button type="button" id="bulk-accept-all"
+                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center space-x-2 shadow-sm">
+                        @include('partials.icons.check')
+                        <span>Terima Semua Pesanan ({{ $orders->where('status', \App\Constant::ORDER_STATUS['PENDING'])->count() }})</span>
+                    </button>
+
+                    <button type="button" id="bulk-reject-all"
+                        class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center space-x-2 shadow-sm">
+                        @include('partials.icons.x')
+                        <span>Tolak Semua Pesanan</span>
+                    </button>
+                </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div id="bulk-progress" class="hidden mb-6">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex items-center space-x-3">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <div class="flex-1">
+                        <div class="text-sm font-medium text-blue-800 mb-1">Memproses pesanan...</div>
+                        <div class="w-full bg-blue-200 rounded-full h-2">
+                            <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="text-sm text-blue-600">
+                        <span id="progress-text">0 / 0</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="orders-container">
@@ -17,7 +56,7 @@
                     @if (
                         ($order->payment_method === 'digital' && $order->payment_status === 'paid') ||
                             ($order->payment_method === 'cash' && $order->payment_status === 'paid')) border-green-400 @elseif($order->payment_method === 'cash' && $order->payment_status === 'unpaid') border-yellow-400 @else border-gray-200 @endif hover:shadow-md transition-all duration-200 flex flex-col h-full"
-                    data-order-id="{{ $order->id }}">
+                    data-order-id="{{ $order->id }}" data-status="{{ $order->status }}">
                     <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
                         <div class="flex items-center justify-between">
                             <h3 class="font-semibold text-gray-900">{{ $order->user->name }}</h3>
@@ -166,6 +205,145 @@
                 });
             }
 
+            function updateProgress(current, total) {
+                const percentage = Math.round((current / total) * 100);
+                $('#progress-bar').css('width', percentage + '%');
+                $('#progress-text').text(`${current} / ${total}`);
+            }
+
+            // Bulk Accept All Orders
+            $('#bulk-accept-all').on('click', function() {
+                const pendingOrders = $('[data-status="{{ \App\Constant::ORDER_STATUS['PENDING'] }}"]');
+                const totalOrders = pendingOrders.length;
+
+                if (totalOrders === 0) {
+                    showAlert('Tidak ada pesanan pending untuk diproses', 'error');
+                    return;
+                }
+
+                if (!confirm(`Yakin ingin menerima semua ${totalOrders} pesanan sekaligus?`)) {
+                    return;
+                }
+
+                // Show progress indicator
+                $('#bulk-progress').removeClass('hidden');
+                updateProgress(0, totalOrders);
+
+                // Disable bulk buttons
+                $('#bulk-accept-all, #bulk-reject-all').prop('disabled', true).addClass('opacity-50');
+
+                let processedCount = 0;
+                let successCount = 0;
+                let errorCount = 0;
+
+                // Process each order
+                pendingOrders.each(function(index) {
+                    const orderId = $(this).data('order-id');
+
+                    // Add delay between requests to avoid overwhelming server
+                    setTimeout(() => {
+                        $.ajax({
+                            url: `/admin/orders/${orderId}/accept`,
+                            type: 'POST',
+                            success: function(response) {
+                                successCount++;
+                                processedCount++;
+                                updateProgress(processedCount, totalOrders);
+
+                                // Update card status or remove
+                                $(`[data-order-id="${orderId}"]`).fadeOut(300, function() {
+                                    $(this).remove();
+                                });
+
+                                // Check if all processed
+                                if (processedCount === totalOrders) {
+                                    setTimeout(() => {
+                                        $('#bulk-progress').addClass('hidden');
+                                        showAlert(`Berhasil memproses ${successCount} pesanan${errorCount > 0 ? `, ${errorCount} gagal` : ''}`);
+                                        location.reload();
+                                    }, 500);
+                                }
+                            },
+                            error: function(xhr) {
+                                errorCount++;
+                                processedCount++;
+                                updateProgress(processedCount, totalOrders);
+
+                                console.error(`Error processing order ${orderId}:`, xhr);
+
+                                // Check if all processed
+                                if (processedCount === totalOrders) {
+                                    setTimeout(() => {
+                                        $('#bulk-progress').addClass('hidden');
+                                        showAlert(`Selesai memproses. ${successCount} berhasil${errorCount > 0 ? `, ${errorCount} gagal` : ''}`, errorCount > 0 ? 'error' : 'success');
+                                        if (successCount > 0) location.reload();
+                                    }, 500);
+                                }
+                            }
+                        });
+                    }, index * 200); // 200ms delay between each request
+                });
+            });
+
+            // Bulk Reject All Orders
+            $('#bulk-reject-all').on('click', function() {
+                const pendingOrders = $('[data-status="{{ \App\Constant::ORDER_STATUS['PENDING'] }}"]');
+                const totalOrders = pendingOrders.length;
+
+                if (totalOrders === 0) {
+                    showAlert('Tidak ada pesanan pending untuk ditolak', 'error');
+                    return;
+                }
+
+                if (!confirm(`Yakin ingin menolak semua ${totalOrders} pesanan sekaligus?`)) {
+                    return;
+                }
+
+                // Show progress indicator with animation
+                $('#bulk-progress').removeClass('hidden');
+                updateProgress(0, totalOrders);
+
+                // Disable bulk buttons
+                $('#bulk-accept-all, #bulk-reject-all').prop('disabled', true).addClass('opacity-50');
+
+                // Animate progress bar while waiting
+                let currentProgress = 0;
+                const progressInterval = setInterval(() => {
+                    currentProgress += Math.random() * 15; // Random increment
+                    if (currentProgress > 90) currentProgress = 90; // Cap at 90% until completion
+                    updateProgress(Math.floor(currentProgress), totalOrders);
+                }, 100);
+
+                $.ajax({
+                    url: '/admin/orders/bulk/reject-all',
+                    type: 'POST',
+                    success: function(response) {
+                        clearInterval(progressInterval);
+                        updateProgress(totalOrders, totalOrders); // Complete progress
+
+                        setTimeout(() => {
+                            $('#bulk-progress').addClass('hidden');
+
+                            if (response.success) {
+                                showAlert(response.message);
+                                setTimeout(() => location.reload(), 1000);
+                            } else {
+                                showAlert(response.message || 'Terjadi kesalahan', 'error');
+                                $('#bulk-accept-all, #bulk-reject-all').prop('disabled', false).removeClass('opacity-50');
+                            }
+                        }, 500);
+                    },
+                    error: function(xhr) {
+                        clearInterval(progressInterval);
+                        $('#bulk-progress').addClass('hidden');
+                        $('#bulk-accept-all, #bulk-reject-all').prop('disabled', false).removeClass('opacity-50');
+
+                        const errorMessage = xhr.responseJSON?.message || 'Terjadi kesalahan saat memproses pesanan';
+                        showAlert(errorMessage, 'error');
+                    }
+                });
+            });
+            
             // Accept Cash Order - Langsung selesaikan dan tandai paid
             $(document).on('click', '[id^="accept-cash-order-"]', function() {
                 const orderId = $(this).attr('id').split('-')[3];

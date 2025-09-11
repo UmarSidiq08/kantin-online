@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderLog;
 use App\Constant;
 use Illuminate\Support\Facades\log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -25,11 +26,133 @@ class OrderController extends Controller
         }
 
         $orders = $ordersQuery->latest()->get();
-        
+
 
         return view('admin.orders.index', compact('orders'));
     }
 
+    /**
+     * Bulk accept all pending orders
+     */
+    public function bulkAcceptAll()
+    {
+        $canteenId = auth()->user()->canteen->id;
+
+        try {
+            DB::beginTransaction();
+
+            $pendingOrders = Order::where('canteen_id', $canteenId)
+                ->where('status', Constant::ORDER_STATUS['PENDING'])
+                ->where('admin_deleted', false)
+                ->get();
+
+            if ($pendingOrders->isEmpty()) {
+                return response()->json(['success' => false, 'message' => 'Tidak ada pesanan pending']);
+            }
+
+            $processedCount = 0;
+
+            foreach ($pendingOrders as $order) {
+                $order->update([
+                    'status' => Constant::ORDER_STATUS['DIPROSES'],
+                ]);
+
+                $log = $order->logs()->create([
+                    'order_id'    => $order->id,
+                    'canteen_id'  => $order->canteen_id,
+                    'user_id'     => $order->user_id,
+                    'status'      => Constant::ORDER_STATUS['DIPROSES'],
+                    'total_price' => $order->total_price,
+                    'items'       => $order->items,
+                ]);
+
+                foreach ($order->items as $item) {
+                    $item->update(['orderlog_id' => $log->id]);
+                }
+
+                $processedCount++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil menerima {$processedCount} pesanan",
+                'processed_count' => $processedCount
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Bulk accept error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memproses pesanan'
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk reject all pending orders
+     */
+    public function bulkRejectAll()
+    {
+        $canteenId = auth()->user()->canteen->id;
+
+        try {
+            DB::beginTransaction();
+
+            $pendingOrders = Order::where('canteen_id', $canteenId)
+                ->where('status', Constant::ORDER_STATUS['PENDING'])
+                ->where('admin_deleted', false)
+                ->get();
+
+            if ($pendingOrders->isEmpty()) {
+                return response()->json(['success' => false, 'message' => 'Tidak ada pesanan pending']);
+            }
+
+            $processedCount = 0;
+
+            foreach ($pendingOrders as $order) {
+                $order->update([
+                    'status' => Constant::ORDER_STATUS['DITOLAK'],
+                    'admin_deleted' => false,
+                ]);
+
+                $log = $order->logs()->create([
+                    'order_id'    => $order->id,
+                    'canteen_id'  => $order->canteen_id,
+                    'user_id'     => $order->user_id,
+                    'status'      => Constant::ORDER_STATUS['DITOLAK'],
+                    'total_price' => $order->total_price,
+                    'items'       => $order->items,
+                ]);
+
+                foreach ($order->items as $item) {
+                    $item->update(['orderlog_id' => $log->id]);
+                }
+
+                $processedCount++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil menolak {$processedCount} pesanan",
+                'processed_count' => $processedCount
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Bulk reject error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memproses pesanan'
+            ], 500);
+        }
+    }
 
     public function markAsProcessed(Order $order)
     {
@@ -171,6 +294,7 @@ class OrderController extends Controller
 
         return back()->with('success', 'Pesanan berhasil disembunyikan dari daftar admin.');
     }
+
     public function confirmCashPayment(Order $order)
     {
         $order->update([
