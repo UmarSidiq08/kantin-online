@@ -147,21 +147,23 @@ class UserOrderController extends Controller
         ]);
     }
 
-    public function table(Request $request)
+   public function table(Request $request)
     {
-        $orders = Order::with('items.menu')->where('user_id', auth()->id())->latest();
-
+        $orders = Order::with(['items.menu', 'canteen'])->where('user_id', auth()->id())->latest();
 
         return DataTables::of($orders)
             ->addIndexColumn()
             ->editColumn('created_at', fn($order) => $order->created_at->format('d M Y, H:i'))
+            ->addColumn('canteen_name', function ($order) {
+                return $order->canteen ? $order->canteen->name : 'Unknown Canteen';
+            })
             ->addColumn('menus', function ($order) {
                 // Gabungkan semua nama menu yang dipesan
                 return $order->items->map(function ($item) {
                     return $item->menu->name . ' x' . $item->quantity;
                 })->implode('<br>');
             })
-            ->addColumn('status', fn($log) => ucfirst($log->status ?? '-'))
+            ->addColumn('status', fn($order) => ucfirst($order->status ?? '-'))
             ->editColumn('total_price', fn($order) => 'Rp ' . number_format($order->total_price, 0, ',', '.'))
             ->addColumn('payment_method', function ($order) {
                 return ucfirst($order->payment_method ?? '-');

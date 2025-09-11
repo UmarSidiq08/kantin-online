@@ -78,35 +78,40 @@ Route::middleware('auth')->group(function () {
             Route::post('/', 'pay')->name('pay');
         });
     });
-    Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {
+Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {
 
-        Route::controller(UserController::class)->group(function () {
-            Route::get('/dashboard', 'index')->name('dashboard');
-            Route::get('/menu', 'index')->name('menu.index');
-            Route::get('/pilih-kantin/{id}', 'pilihKantin')->name('pilih-kantin');
-        });
-        Route::controller(PaymentController::class)->group(function () {
-            Route::get('/payment/success', 'success')->name('payment.success');
-            Route::get('/payment/pending', 'pending')->name('payment.pending');
-            Route::get('/payment/finish', 'handleFinish')->name('payment.finish');
-            Route::post('/checkout', 'checkout')->name('checkout');
-            Route::post('/checkout/cash', 'checkoutCash')->name('checkout.cash');
-
-            //  Route::post('/balance/topup', 'topUpBalance')->name('user.balance.topup');
-            //  Route::post('/checkout/balance', 'checkoutBalance')->name('user.checkout.balance');
-        });
-
-        Route::prefix('orders')->name('orders.')->controller(UserOrderController::class)->group(function () {
-            Route::get('/', 'index')->name('index');
-            Route::get('/success', 'success')->name('success');
-            Route::get('/history', 'history')->name('history');
-            Route::get('/history/table', 'table')->name('history.table');
-        });
-
-        Route::prefix('keranjang')->name('cart.')->controller(CartController::class)->group(function () {
-            Route::get('/', 'index')->name('index');
-            Route::post('/tambah', 'add')->name('add');
-            Route::delete('/hapus/{id}', 'destroy')->name('destroy');
-        });
+    Route::controller(UserController::class)->group(function () {
+        Route::get('/dashboard', 'index')->name('dashboard');
+        Route::get('/menu', 'index')->name('menu.index');
+        Route::get('/pilih-kantin/{id}', 'pilihKantin')->name('pilih-kantin');
     });
+
+    // Update PaymentController routes untuk multi-canteen
+    Route::controller(PaymentController::class)->group(function () {
+        Route::get('/payment/success', 'success')->name('payment.success');
+        Route::get('/payment/pending', 'pending')->name('payment.pending');
+        Route::get('/payment/finish', 'handleFinish')->name('payment.finish');
+
+        // Legacy routes - redirect ke cart dengan info multi-canteen
+        Route::post('/checkout', 'checkout')->name('checkout');
+        Route::post('/checkout/cash', 'checkoutCash')->name('checkout.cash');
+        Route::post('/checkout/balance', 'checkoutBalance')->name('checkout.balance');
+
+        // NEW: Route untuk checkout per kantin
+        Route::post('/checkout/canteen/{canteenId}', 'checkoutCanteen')->name('checkout.canteen');
+    });
+
+    Route::prefix('orders')->name('orders.')->controller(UserOrderController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/success', 'success')->name('success');
+        Route::get('/history', 'history')->name('history');
+        Route::get('/history/table', 'table')->name('history.table');
+    });
+
+    Route::prefix('keranjang')->name('cart.')->controller(CartController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/tambah', 'add')->name('add');
+        Route::delete('/hapus/{id}', 'destroy')->name('destroy');
+    });
+});
 });

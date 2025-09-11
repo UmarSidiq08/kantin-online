@@ -8,6 +8,7 @@ class Cart extends Model
 {
     protected $guarded = [];
 
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -22,3 +23,6 @@ class Cart extends Model
         return $this->belongsTo(Canteen::class);
     }
 }
+
+
+

@@ -13,7 +13,12 @@ class CartController extends Controller
 {
     public function index()
     {
-        $carts = Cart::with('menu')->where('user_id', Auth::id())->get();
+        // Ambil cart dengan relasi menu dan canteen, dikelompokkan berdasarkan canteen
+        $carts = Cart::with(['menu.canteen'])
+            ->where('user_id', Auth::id())
+            ->get()
+            ->groupBy('canteen_id');
+
         return view('user.cart.index', compact('carts'));
     }
 
@@ -21,21 +26,9 @@ class CartController extends Controller
     {
         $quantities = $request->input('quantities');
         $userId = auth()->id();
-        $existingCart = Cart::where('user_id', $userId)->first();
-
-        $quantities = $request->input('quantities');
 
         if (!is_array($quantities) || empty($quantities)) {
             return redirect()->back()->with('error', 'Silakan pilih minimal satu menu terlebih dahulu.');
-        }
-
-        $firstMenuId = array_key_first($quantities);
-
-        $menu = Menu::findOrFail($firstMenuId);
-        $menuCanteenId = $menu->canteen_id;
-
-        if ($existingCart && $existingCart->canteen_id !== $menuCanteenId) {
-            return redirect()->route('user.cart.index')->with('error', 'Kamu hanya bisa memesan dari satu kantin dalam satu waktu. Kosongkan keranjang terlebih dahulu.');
         }
 
         foreach ($quantities as $menuId => $qty) {
@@ -58,12 +51,36 @@ class CartController extends Controller
         return redirect()->route('user.cart.index')->with('success', 'Menu ditambahkan ke keranjang!');
     }
 
-
     public function destroy($id)
     {
         $cart = Cart::where('id', $id)->where('user_id', Auth::id())->firstOrFail();
         $cart->delete();
 
         return redirect()->route('user.cart.index')->with('success', 'Item berhasil dihapus dari keranjang!');
+    }
+
+    // Method baru untuk checkout per kantin
+    public function checkoutCanteen($canteenId, Request $request)
+    {
+        $selectedMethod = $request->input('payment_method', 'cash');
+
+        // Validasi cart items untuk kantin ini
+        $cartItems = Cart::with('menu')
+            ->where('user_id', Auth::id())
+            ->where('canteen_id', $canteenId)
+            ->get();
+
+        if ($cartItems->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada item di keranjang untuk kantin ini.'
+            ], 400);
+        }
+
+        // Redirect ke checkout controller dengan parameter kantin
+        return redirect()->route('user.checkout.canteen', [
+            'canteenId' => $canteenId,
+            'payment_method' => $selectedMethod
+        ]);
     }
 }
