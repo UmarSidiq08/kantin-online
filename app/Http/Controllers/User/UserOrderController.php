@@ -79,6 +79,15 @@ class UserOrderController extends Controller
                 break;
         }
 
+        // Proses rating untuk setiap menu
+        $menus = $menus->map(function ($menu) {
+            $rating = $menu->averageRating();
+            $menu->full_stars = floor($rating);
+            $menu->has_half_star = ($rating - $menu->full_stars) >= 0.5;
+            $menu->empty_stars = 5 - $menu->full_stars - ($menu->has_half_star ? 1 : 0);
+            return $menu;
+        });
+
         $canteen = Canteen::find($canteenId);
 
         return view('user.orders.index', compact('menus', 'canteen'));
@@ -147,7 +156,7 @@ class UserOrderController extends Controller
         ]);
     }
 
-   public function table(Request $request)
+    public function table(Request $request)
     {
         $orders = Order::with(['items.menu', 'canteen'])->where('user_id', auth()->id())->latest();
 

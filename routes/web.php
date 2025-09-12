@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/profile', 'destroy')->name('profile.destroy');
     });
     Route::middleware(['role:admin', 'can:canteen.owner'])->prefix('admin')->name('admin.')->group(function () {
+        
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/riwayat-pesanan', [OrderController::class, 'logHistory'])->name('logs');
         Route::get('/riwayat-pesanan/data', [LogOrderController::class, 'data'])->name('logs.data');

@@ -25,10 +25,10 @@ class DashboardController extends Controller
             })
             ->groupBy('menu_id')
             ->with('menu')
-            ->inRandomOrder()
+            ->orderBy('total_qty', 'desc') 
             ->take(5)
             ->get();
-            
+
         $menuNames = $topMenus->pluck('menu.name');
         $menuQuantities = $topMenus->pluck('total_qty');
         return view('admin.dashboard', compact(

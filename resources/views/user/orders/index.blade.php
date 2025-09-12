@@ -236,9 +236,35 @@
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center space-x-2">
                                             <div class="flex">
-                                                @for ($i = 1; $i <= 5; $i++)
-                                                    <svg class="w-4 h-4 {{ $i <= floor($menu->averageRating()) ? 'text-yellow-400' : 'text-gray-300' }} fill-current"
-                                                        viewBox="0 0 20 20">
+                                                {{-- Full Stars --}}
+                                                @for ($i = 1; $i <= $menu->full_stars; $i++)
+                                                    <svg class="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                                                        <path
+                                                            d="M10 15l-5.878 3.09 1.123-6.545L0 6.91l6.564-.955L10 0l3.436 5.955L20 6.91l-5.245 4.635L15.878 18z" />
+                                                    </svg>
+                                                @endfor
+
+                                                {{-- Half Star --}}
+                                                @if ($menu->has_half_star)
+                                                    <div class="relative w-4 h-4">
+                                                        {{-- Background empty star --}}
+                                                        <svg class="absolute w-4 h-4 text-gray-300 fill-current"
+                                                            viewBox="0 0 20 20">
+                                                            <path
+                                                                d="M10 15l-5.878 3.09 1.123-6.545L0 6.91l6.564-.955L10 0l3.436 5.955L20 6.91l-5.245 4.635L15.878 18z" />
+                                                        </svg>
+                                                        {{-- Half filled star --}}
+                                                        <svg class="absolute w-4 h-4 text-yellow-400 fill-current"
+                                                            viewBox="0 0 20 20" style="clip-path: inset(0 50% 0 0);">
+                                                            <path
+                                                                d="M10 15l-5.878 3.09 1.123-6.545L0 6.91l6.564-.955L10 0l3.436 5.955L20 6.91l-5.245 4.635L15.878 18z" />
+                                                        </svg>
+                                                    </div>
+                                                @endif
+
+                                                {{-- Empty Stars --}}
+                                                @for ($i = 1; $i <= $menu->empty_stars; $i++)
+                                                    <svg class="w-4 h-4 text-gray-300 fill-current" viewBox="0 0 20 20">
                                                         <path
                                                             d="M10 15l-5.878 3.09 1.123-6.545L0 6.91l6.564-.955L10 0l3.436 5.955L20 6.91l-5.245 4.635L15.878 18z" />
                                                     </svg>
