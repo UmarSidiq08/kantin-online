@@ -204,6 +204,28 @@
                             Laporan Penjualan
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('admin.canteen.settings') }}"
+                            class="flex items-center px-4 py-3 text-gray-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all duration-200 {{ request()->routeIs('admin.canteen.settings*') ? 'border-l-4 border-blue-500 bg-slate-700 text-white' : '' }}">
+                            <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z">
+                                </path>
+                            </svg>
+                            Pengaturan
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.discount.index') }}"
+                            class="flex items-center px-4 py-3 text-gray-300 hover:bg-slate-700 hover:text-white rounded-lg transition-all duration-200 {{ request()->routeIs('admin.discount*') ? 'border-l-4 border-blue-500 bg-slate-700 text-white' : '' }}">
+                            <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                    d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z">
+                                </path>
+                            </svg>
+                            Pengaturan
+                        </a>
+                    </li>
                 </ul>
             </nav>
 

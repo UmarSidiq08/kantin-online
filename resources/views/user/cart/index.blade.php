@@ -16,7 +16,10 @@
                 @foreach ($carts as $canteenId => $canteenCarts)
                     @php
                         $canteenName = $canteenCarts->first()->menu->canteen->name;
-                        $canteenTotal = $canteenCarts->sum(function($cart) {
+                        // Gunakan total_price yang sudah include diskon
+                        $canteenTotal = $canteenCarts->sum('total_price');
+                        $canteenSavings = $canteenCarts->sum('total_savings');
+                        $originalCanteenTotal = $canteenCarts->sum(function($cart) {
                             return $cart->menu->price * $cart->quantity;
                         });
                     @endphp
@@ -32,10 +35,20 @@
                                     <div>
                                         <h3 class="text-white font-semibold text-lg">{{ $canteenName }}</h3>
                                         <p class="text-blue-100 text-sm">{{ $canteenCarts->count() }} item(s)</p>
+                                        @if($canteenSavings > 0)
+                                            <p class="text-yellow-200 text-xs">💰 Hemat Rp {{ number_format($canteenSavings, 0, ',', '.') }}</p>
+                                        @endif
                                     </div>
                                 </div>
-                                <div class="text-white font-bold text-lg">
-                                    Rp {{ number_format($canteenTotal, 0, ',', '.') }}
+                                <div class="text-right">
+                                    @if($canteenSavings > 0)
+                                        <div class="text-yellow-200 text-sm line-through">
+                                            Rp {{ number_format($originalCanteenTotal, 0, ',', '.') }}
+                                        </div>
+                                    @endif
+                                    <div class="text-white font-bold text-lg">
+                                        Rp {{ number_format($canteenTotal, 0, ',', '.') }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -57,17 +70,42 @@
                                         <tr class="hover:bg-gray-50 transition-colors">
                                             <td class="px-4 py-3">
                                                 <div class="font-medium text-gray-900 text-sm">{{ $cart->menu->name }}</div>
+                                                @if($cart->hasActiveDiscount())
+                                                    <div class="mt-1">
+                                                        <span class="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                            🏷️ Diskon {{ $cart->active_discount->formatted_value }}
+                                                        </span>
+                                                    </div>
+                                                @endif
                                             </td>
                                             <td class="px-4 py-3 text-center">
                                                 <span class="inline-block w-7 h-7 bg-blue-50 text-blue-700 rounded text-sm font-medium leading-7">
                                                     {{ $cart->quantity }}
                                                 </span>
                                             </td>
-                                            <td class="px-4 py-3 text-right font-medium text-gray-900 text-sm">
-                                                Rp {{ number_format($cart->menu->price, 0, ',', '.') }}
+                                            <td class="px-4 py-3 text-right">
+                                                @if($cart->hasActiveDiscount())
+                                                    <div class="text-gray-400 text-xs line-through">
+                                                        Rp {{ number_format($cart->menu->price, 0, ',', '.') }}
+                                                    </div>
+                                                    <div class="font-medium text-green-600 text-sm">
+                                                        Rp {{ number_format($cart->discounted_price, 0, ',', '.') }}
+                                                    </div>
+                                                @else
+                                                    <div class="font-medium text-gray-900 text-sm">
+                                                        Rp {{ number_format($cart->menu->price, 0, ',', '.') }}
+                                                    </div>
+                                                @endif
                                             </td>
-                                            <td class="px-4 py-3 text-right font-semibold text-green-600 text-sm">
-                                                Rp {{ number_format($cart->menu->price * $cart->quantity, 0, ',', '.') }}
+                                            <td class="px-4 py-3 text-right">
+                                                <div class="font-semibold text-green-600 text-sm">
+                                                    Rp {{ number_format($cart->total_price, 0, ',', '.') }}
+                                                </div>
+                                                @if($cart->total_savings > 0)
+                                                    <div class="text-xs text-gray-500">
+                                                        Hemat: Rp {{ number_format($cart->total_savings, 0, ',', '.') }}
+                                                    </div>
+                                                @endif
                                             </td>
                                             <td class="px-4 py-3 text-center">
                                                 <button
@@ -85,9 +123,21 @@
                         <!-- Checkout Section per Kantin -->
                         <div class="bg-gray-50 p-5 border-t">
                             <div class="flex items-center justify-between mb-4">
-                                <h4 class="text-md font-medium text-gray-800">Subtotal {{ $canteenName }}</h4>
-                                <div class="text-lg font-bold text-green-600">
-                                    Rp {{ number_format($canteenTotal, 0, ',', '.') }}
+                                <div>
+                                    <h4 class="text-md font-medium text-gray-800">Subtotal {{ $canteenName }}</h4>
+                                    @if($canteenSavings > 0)
+                                        <p class="text-sm text-green-600">Total Hemat: Rp {{ number_format($canteenSavings, 0, ',', '.') }}</p>
+                                    @endif
+                                </div>
+                                <div class="text-right">
+                                    @if($canteenSavings > 0)
+                                        <div class="text-sm text-gray-400 line-through">
+                                            Rp {{ number_format($originalCanteenTotal, 0, ',', '.') }}
+                                        </div>
+                                    @endif
+                                    <div class="text-lg font-bold text-green-600">
+                                        Rp {{ number_format($canteenTotal, 0, ',', '.') }}
+                                    </div>
                                 </div>
                             </div>
 
@@ -167,11 +217,31 @@
                 @endforeach
 
                 <!-- Total Keseluruhan -->
+                @php
+                    $grandTotal = $carts->flatten()->sum('total_price');
+                    $grandOriginalTotal = $carts->flatten()->sum(function($cart) {
+                        return $cart->menu->price * $cart->quantity;
+                    });
+                    $grandSavings = $grandOriginalTotal - $grandTotal;
+                @endphp
+
                 <div class="bg-white rounded-xl shadow-md p-6">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-xl font-bold text-gray-800">Total Keseluruhan</h3>
-                        <div class="text-2xl font-bold text-blue-600">
-                            Rp {{ number_format($carts->flatten()->sum(function($cart) { return $cart->menu->price * $cart->quantity; }), 0, ',', '.') }}
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">Total Keseluruhan</h3>
+                            @if($grandSavings > 0)
+                                <p class="text-green-600 text-sm mt-1">Total Penghematan: Rp {{ number_format($grandSavings, 0, ',', '.') }}</p>
+                            @endif
+                        </div>
+                        <div class="text-right">
+                            @if($grandSavings > 0)
+                                <div class="text-gray-400 line-through text-lg">
+                                    Rp {{ number_format($grandOriginalTotal, 0, ',', '.') }}
+                                </div>
+                            @endif
+                            <div class="text-2xl font-bold text-blue-600">
+                                Rp {{ number_format($grandTotal, 0, ',', '.') }}
+                            </div>
                         </div>
                     </div>
                     <p class="text-sm text-gray-500 mt-2">Checkout dilakukan per kantin secara terpisah</p>

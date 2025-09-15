@@ -18,14 +18,44 @@ use Yajra\DataTables\Facades\DataTables;
 
 class UserOrderController extends Controller
 {
-    public function index(Request $request)
+ public function index(Request $request)
     {
         $canteenId = session('selected_canteen_id');
         if (!$canteenId) {
             return redirect()->route('user.dashboard')->with('error', 'Silakan pilih kantin terlebih dahulu.');
         }
 
-        $query = Menu::where('canteen_id', $canteenId);
+        // Load menus dengan relasi discount yang aktif
+        $query = Menu::where('canteen_id', $canteenId)
+            ->with(['discounts' => function($discountQuery) {
+                $discountQuery->active()
+                    ->where(function($q) {
+                        $now = now();
+                        $today = $now->toDateString();
+                        $currentTime = $now->format('H:i:s');
+
+                        // Filter berdasarkan tanggal
+                        $q->where(function($dateQuery) use ($today) {
+                            $dateQuery->whereNull('start_date')
+                                     ->orWhere('start_date', '<=', $today);
+                        })
+                        ->where(function($dateQuery) use ($today) {
+                            $dateQuery->whereNull('end_date')
+                                     ->orWhere('end_date', '>=', $today);
+                        })
+                        // Filter berdasarkan jam
+                        ->where(function($timeQuery) use ($currentTime) {
+                            $timeQuery->whereNull('start_time')
+                                     ->whereNull('end_time')
+                                     ->orWhere(function($tq) use ($currentTime) {
+                                         $tq->whereNotNull('start_time')
+                                            ->whereNotNull('end_time')
+                                            ->where('start_time', '<=', $currentTime)
+                                            ->where('end_time', '>=', $currentTime);
+                                     });
+                        });
+                    });
+            }]);
 
         // Filter berdasarkan kategori
         if ($request->filled('category') && $request->category !== 'semua') {

@@ -66,7 +66,6 @@
             </div>
 
             {{-- Filter & Cart Button Section --}}
-            {{-- Filter & Cart Button Section --}}
             <div class="flex flex-col lg:flex-row justify-between items-center mb-8 gap-4">
                 {{-- Filter Section --}}
                 <div class="flex flex-col sm:flex-row items-center gap-4">
@@ -191,6 +190,25 @@
                                     {{ \App\Constant::MENU_CATEGORIES[$menu->category] ?? 'Tidak Diketahui' }}
                                 </span>
                             </div>
+
+                            {{-- Discount Badge --}}
+                            @if ($menu->hasActiveDiscount())
+                                @php
+                                    $discountInfo = $menu->discount_info;
+                                @endphp
+                                <div class="absolute top-3 right-3">
+                                    <div class="relative">
+                                        <div
+                                            class="px-3 py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                            {{ $discountInfo['percentage'] }}% OFF
+                                        </div>
+                                        {{-- Discount glow effect --}}
+                                        <div
+                                            class="absolute inset-0 bg-gradient-to-r from-red-500 to-pink-500 rounded-full blur-sm opacity-50 -z-10">
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
 
                         {{-- Content --}}
@@ -208,12 +226,39 @@
                                 </p>
                             @endif
 
-                            {{-- Price --}}
+                            {{-- Price Section with Discount --}}
                             <div class="mb-3">
-                                <span
-                                    class="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                                    Rp {{ number_format($menu->price, 0, ',', '.') }}
-                                </span>
+                                @if ($menu->hasActiveDiscount())
+                                    @php
+                                        $discountInfo = $menu->discount_info;
+                                        $formattedPrice = $menu->formatted_price;
+                                    @endphp
+                                    <div class="space-y-1">
+                                        {{-- Original Price (Crossed) --}}
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="text-sm text-gray-500 line-through">{{ $formattedPrice['original'] }}</span>
+                                            <span
+                                                class="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-medium rounded-full">
+                                                -{{ $discountInfo['percentage'] }}%
+                                            </span>
+                                        </div>
+                                        {{-- Discounted Price --}}
+                                        <div class="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                                            {{ $formattedPrice['discounted'] }}
+                                        </div>
+                                        {{-- Savings Info --}}
+                                        <div class="text-xs text-green-600 font-medium">
+                                            Hemat Rp {{ number_format($discountInfo['amount'], 0, ',', '.') }}
+                                        </div>
+                                    </div>
+                                @else
+                                    {{-- Regular Price --}}
+                                    <span
+                                        class="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                                        Rp {{ number_format($menu->price, 0, ',', '.') }}
+                                    </span>
+                                @endif
                             </div>
 
                             {{-- Sales Info --}}
@@ -291,6 +336,32 @@
                                     </div>
                                 @endif
                             </div>
+
+                            {{-- Discount Info --}}
+                            @if ($menu->hasActiveDiscount())
+                                @php
+                                    $discountInfo = $menu->discount_info;
+                                @endphp
+                                <div class="mb-3 p-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-100 rounded-lg">
+                                    <div class="flex items-center gap-1 text-red-600">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="text-xs font-medium">
+                                            Promo Terbatas
+                                            @if ($discountInfo['end_date'])
+                                                s/d {{ $discountInfo['end_date'] }}
+                                            @endif
+                                            @if ($discountInfo['end_time'])
+                                                {{ $discountInfo['end_time'] }}
+                                            @endif
+                                        </span>
+                                    </div>
+                                    @if ($discountInfo['description'])
+                                        <div class="text-xs text-gray-600 mt-1">{{ $discountInfo['description'] }}</div>
+                                    @endif
+                                </div>
+                            @endif
 
                             {{-- Quantity Controls --}}
                             <div class="flex items-center justify-center gap-3 bg-gray-50 rounded-xl p-2">

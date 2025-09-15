@@ -12,9 +12,11 @@ use App\Http\Controllers\RatingController;
 use App\Http\Controllers\BalanceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\CanteenSettingsController;
 use App\Http\Controllers\Admin\LogOrderController;
 use App\Http\Controllers\Admin\LaporanPenjualanController;
 use App\Http\Controllers\Admin\PremiumController;
+use App\Http\Controllers\Admin\DiscountController;
 
 
 
@@ -42,10 +44,14 @@ Route::middleware('auth')->group(function () {
         Route::delete('/profile', 'destroy')->name('profile.destroy');
     });
     Route::middleware(['role:admin', 'can:canteen.owner'])->prefix('admin')->name('admin.')->group(function () {
-        
+
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/riwayat-pesanan', [OrderController::class, 'logHistory'])->name('logs');
         Route::get('/riwayat-pesanan/data', [LogOrderController::class, 'data'])->name('logs.data');
+
+        Route::get('canteen/settings', [CanteenSettingsController::class, 'index'])->name('canteen.settings');
+        Route::put('canteen/settings', [CanteenSettingsController::class, 'updateSettings'])->name('canteen.update-settings');
+        Route::post('canteen/quick-toggle', [CanteenSettingsController::class, 'quickToggle'])->name('canteen.quick-toggle');
 
         Route::prefix('orders')->name('orders.')->controller(OrderController::class)->group(function () {
             Route::get('/', 'index')->name('index');
@@ -78,41 +84,50 @@ Route::middleware('auth')->group(function () {
             Route::get('/', 'show')->name('show');
             Route::post('/', 'pay')->name('pay');
         });
+        Route::prefix('discounts')->name('discount.')->controller(DiscountController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/table', 'table')->name('table');
+            Route::post('/store', 'store')->name('store');
+            Route::post('/update', 'update')->name('update');
+            Route::post('/delete', 'destroy')->name('destroy');
+            Route::post('/toggle-status', 'toggleStatus')->name('toggle-status');
+            Route::get('/menu-price/{menu_id}', 'getMenuPrice')->name('menu-price');
+        });
     });
-Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {
+    Route::middleware('role:user')->prefix('user')->name('user.')->group(function () {
 
-    Route::controller(UserController::class)->group(function () {
-        Route::get('/dashboard', 'index')->name('dashboard');
-        Route::get('/menu', 'index')->name('menu.index');
-        Route::get('/pilih-kantin/{id}', 'pilihKantin')->name('pilih-kantin');
+        Route::controller(UserController::class)->group(function () {
+            Route::get('/dashboard', 'index')->name('dashboard');
+            Route::get('/menu', 'index')->name('menu.index');
+            Route::get('/pilih-kantin/{id}', 'pilihKantin')->name('pilih-kantin');
+        });
+
+        // Update PaymentController routes untuk multi-canteen
+        Route::controller(PaymentController::class)->group(function () {
+            Route::get('/payment/success', 'success')->name('payment.success');
+            Route::get('/payment/pending', 'pending')->name('payment.pending');
+            Route::get('/payment/finish', 'handleFinish')->name('payment.finish');
+
+            // Legacy routes - redirect ke cart dengan info multi-canteen
+            Route::post('/checkout', 'checkout')->name('checkout');
+            Route::post('/checkout/cash', 'checkoutCash')->name('checkout.cash');
+            Route::post('/checkout/balance', 'checkoutBalance')->name('checkout.balance');
+
+            // NEW: Route untuk checkout per kantin
+            Route::post('/checkout/canteen/{canteenId}', 'checkoutCanteen')->name('checkout.canteen');
+        });
+
+        Route::prefix('orders')->name('orders.')->controller(UserOrderController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/success', 'success')->name('success');
+            Route::get('/history', 'history')->name('history');
+            Route::get('/history/table', 'table')->name('history.table');
+        });
+
+        Route::prefix('keranjang')->name('cart.')->controller(CartController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/tambah', 'add')->name('add');
+            Route::delete('/hapus/{id}', 'destroy')->name('destroy');
+        });
     });
-
-    // Update PaymentController routes untuk multi-canteen
-    Route::controller(PaymentController::class)->group(function () {
-        Route::get('/payment/success', 'success')->name('payment.success');
-        Route::get('/payment/pending', 'pending')->name('payment.pending');
-        Route::get('/payment/finish', 'handleFinish')->name('payment.finish');
-
-        // Legacy routes - redirect ke cart dengan info multi-canteen
-        Route::post('/checkout', 'checkout')->name('checkout');
-        Route::post('/checkout/cash', 'checkoutCash')->name('checkout.cash');
-        Route::post('/checkout/balance', 'checkoutBalance')->name('checkout.balance');
-
-        // NEW: Route untuk checkout per kantin
-        Route::post('/checkout/canteen/{canteenId}', 'checkoutCanteen')->name('checkout.canteen');
-    });
-
-    Route::prefix('orders')->name('orders.')->controller(UserOrderController::class)->group(function () {
-        Route::get('/', 'index')->name('index');
-        Route::get('/success', 'success')->name('success');
-        Route::get('/history', 'history')->name('history');
-        Route::get('/history/table', 'table')->name('history.table');
-    });
-
-    Route::prefix('keranjang')->name('cart.')->controller(CartController::class)->group(function () {
-        Route::get('/', 'index')->name('index');
-        Route::post('/tambah', 'add')->name('add');
-        Route::delete('/hapus/{id}', 'destroy')->name('destroy');
-    });
-});
 });
