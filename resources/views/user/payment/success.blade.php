@@ -241,7 +241,7 @@
                 return;
             }
 
-            fetch('/ratings', {
+            fetch('/user/ratings', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

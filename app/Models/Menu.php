@@ -10,6 +10,11 @@ class Menu extends Model
 {
     use HasFactory;
     protected $guarded = ['id'];
+    protected $casts = [
+        'end_date' => 'date',
+        'end_time' => 'datetime', // or 'time' if it's just time
+        // ... other casts
+    ];
 
     public function canteen()
     {
@@ -40,7 +45,7 @@ class Menu extends Model
     public function totalTerjual()
     {
         return $this->hasMany(OrderItem::class)
-            ->whereHas('order', function($query) {
+            ->whereHas('order', function ($query) {
                 $query->where('status', 'selesai');
             })
             ->sum('quantity') ?? 0;
@@ -49,7 +54,7 @@ class Menu extends Model
     public function totalTerjualByDateRange($startDate = null, $endDate = null)
     {
         $query = $this->hasMany(OrderItem::class)
-            ->whereHas('order', function($q) {
+            ->whereHas('order', function ($q) {
                 $q->where('status', 'selesai');
             });
 
@@ -73,33 +78,33 @@ class Menu extends Model
     {
         return $this->discounts()
             ->active()
-            ->where(function($query) {
+            ->where(function ($query) {
                 $now = now();
                 $today = $now->toDateString();
                 $currentTime = $now->format('H:i:s');
 
                 // Diskon tanpa batasan tanggal dan jam
-                $query->where(function($q) {
+                $query->where(function ($q) {
                     $q->whereNull('start_date')
-                      ->whereNull('end_date')
-                      ->whereNull('start_time')
-                      ->whereNull('end_time');
+                        ->whereNull('end_date')
+                        ->whereNull('start_time')
+                        ->whereNull('end_time');
                 })
-                // Atau diskon dengan batasan tanggal yang masih berlaku
-                ->orWhere(function($q) use ($today, $currentTime) {
-                    $q->where(function($dateQuery) use ($today) {
-                        $dateQuery->where('start_date', '<=', $today)
-                                 ->where('end_date', '>=', $today);
-                    })
-                    ->where(function($timeQuery) use ($currentTime) {
-                        $timeQuery->whereNull('start_time')
-                                 ->whereNull('end_time')
-                                 ->orWhere(function($tq) use ($currentTime) {
-                                     $tq->where('start_time', '<=', $currentTime)
-                                        ->where('end_time', '>=', $currentTime);
-                                 });
+                    // Atau diskon dengan batasan tanggal yang masih berlaku
+                    ->orWhere(function ($q) use ($today, $currentTime) {
+                        $q->where(function ($dateQuery) use ($today) {
+                            $dateQuery->where('start_date', '<=', $today)
+                                ->where('end_date', '>=', $today);
+                        })
+                            ->where(function ($timeQuery) use ($currentTime) {
+                                $timeQuery->whereNull('start_time')
+                                    ->whereNull('end_time')
+                                    ->orWhere(function ($tq) use ($currentTime) {
+                                        $tq->where('start_time', '<=', $currentTime)
+                                            ->where('end_time', '>=', $currentTime);
+                                    });
+                            });
                     });
-                });
             })
             ->orderBy('value', 'desc') // prioritas diskon terbesar
             ->first();

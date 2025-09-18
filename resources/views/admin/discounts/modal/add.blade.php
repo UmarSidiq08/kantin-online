@@ -1,5 +1,3 @@
-{{-- resources/views/admin/discounts/modal/add.blade.php --}}
-
 <div class="modal fade" id="modal_add" tabindex="-1" aria-labelledby="modal_add_label" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -44,13 +42,11 @@
                         <div class="col-md-6 mb-3">
                             <label for="start_date" class="form-label">Tanggal Mulai</label>
                             <input type="date" class="form-control" name="start_date">
-                            <div class="form-text">Kosongkan jika berlaku selamanya</div>
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label for="end_date" class="form-label">Tanggal Berakhir</label>
                             <input type="date" class="form-control" name="end_date">
-                            <div class="form-text">Kosongkan jika tidak ada batas waktu</div>
                         </div>
                     </div>
 
@@ -58,39 +54,12 @@
                         <div class="col-md-6 mb-3">
                             <label for="start_time" class="form-label">Jam Mulai</label>
                             <input type="time" class="form-control" name="start_time">
-                            <div class="form-text">Opsional - untuk happy hour</div>
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label for="end_time" class="form-label">Jam Berakhir</label>
                             <input type="time" class="form-control" name="end_time">
-                            <div class="form-text">Opsional - untuk happy hour</div>
                         </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Deskripsi</label>
-                        <textarea class="form-control" name="description" rows="3" placeholder="Deskripsi diskon (opsional)"></textarea>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="is_active" value="1" id="is_active_add" checked>
-                            <label class="form-check-label" for="is_active_add">
-                                <strong>Aktifkan Diskon</strong>
-                            </label>
-                        </div>
-                    </div>
-
-                    {{-- Preview Section --}}
-                    <div class="alert alert-info">
-                        <h6 class="alert-heading"><i class="fas fa-info-circle me-1"></i> Tips:</h6>
-                        <ul class="mb-0">
-                            <li>Diskon persentase maksimal 100%</li>
-                            <li>Diskon nominal tidak boleh melebihi harga menu</li>
-                            <li>Jika tidak ada batasan tanggal/jam, diskon berlaku selamanya</li>
-                            <li>Hanya bisa ada 1 diskon aktif per menu dalam periode yang sama</li>
-                        </ul>
                     </div>
                 </div>
                 <div class="modal-footer">

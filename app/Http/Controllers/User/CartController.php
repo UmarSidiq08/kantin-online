@@ -13,7 +13,6 @@ class CartController extends Controller
 {
     public function index()
     {
-        // Ambil cart dengan relasi menu, canteen, dan discounts yang aktif
         $carts = Cart::with(['menu.canteen', 'menu.discounts' => function($query) {
                 $query->where('is_active', true);
             }])
@@ -21,7 +20,45 @@ class CartController extends Controller
             ->get()
             ->groupBy('canteen_id');
 
-        return view('user.cart.index', compact('carts'));
+        $cartData = $this->prepareCartData($carts);
+
+        return view('user.cart.index', $cartData);
+    }
+
+    private function prepareCartData($carts)
+    {
+        $cartsData = [];
+        $grandTotal = 0;
+        $grandOriginalTotal = 0;
+
+        foreach ($carts as $canteenId => $canteenCarts) {
+            $canteenTotal = $canteenCarts->sum('total_price');
+            $canteenOriginalTotal = $canteenCarts->sum(function($cart) {
+                return $cart->menu->price * $cart->quantity;
+            });
+            $canteenSavings = $canteenOriginalTotal - $canteenTotal;
+
+            $cartsData[$canteenId] = [
+                'items' => $canteenCarts,
+                'canteen_name' => $canteenCarts->first()->menu->canteen->name,
+                'total' => $canteenTotal,
+                'original_total' => $canteenOriginalTotal,
+                'savings' => $canteenSavings,
+                'count' => $canteenCarts->count()
+            ];
+
+            $grandTotal += $canteenTotal;
+            $grandOriginalTotal += $canteenOriginalTotal;
+        }
+
+        return [
+            'carts' => $carts,
+            'cartsData' => $cartsData,
+            'grandTotal' => $grandTotal,
+            'grandOriginalTotal' => $grandOriginalTotal,
+            'grandSavings' => $grandOriginalTotal - $grandTotal,
+            'userBalance' => Auth::user()->balance
+        ];
     }
 
     public function add(Request $request)
@@ -36,16 +73,9 @@ class CartController extends Controller
         foreach ($quantities as $menuId => $qty) {
             if ($qty > 0) {
                 $menu = Menu::findOrFail($menuId);
-
                 Cart::updateOrCreate(
-                    [
-                        'user_id' => $userId,
-                        'menu_id' => $menuId,
-                    ],
-                    [
-                        'quantity' => DB::raw("quantity + $qty"),
-                        'canteen_id' => $menu->canteen_id,
-                    ]
+                    ['user_id' => $userId, 'menu_id' => $menuId],
+                    ['quantity' => DB::raw("quantity + $qty"), 'canteen_id' => $menu->canteen_id]
                 );
             }
         }
@@ -61,12 +91,10 @@ class CartController extends Controller
         return response()->json(['message' => 'Item berhasil dihapus dari keranjang!']);
     }
 
-    // Method checkout per kantin
     public function checkoutCanteen($canteenId, Request $request)
     {
         $selectedMethod = $request->input('payment_method', 'cash');
 
-        // Validasi cart items untuk kantin ini dengan load discounts
         $cartItems = Cart::with(['menu', 'menu.discounts' => function($query) {
                 $query->where('is_active', true);
             }])
@@ -76,26 +104,14 @@ class CartController extends Controller
 
         if ($cartItems->isEmpty()) {
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tidak ada item di keranjang untuk kantin ini.'
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'Tidak ada item di keranjang untuk kantin ini.'], 400);
             }
-
-            return redirect()->route('user.cart.index')
-                ->with('error', 'Tidak ada item di keranjang untuk kantin ini.');
+            return redirect()->route('user.cart.index')->with('error', 'Tidak ada item di keranjang untuk kantin ini.');
         }
 
-        // Redirect ke checkout controller dengan parameter kantin
-        return redirect()->route('user.checkout.canteen', [
-            'canteenId' => $canteenId,
-            'payment_method' => $selectedMethod
-        ]);
+        return redirect()->route('user.checkout.canteen', ['canteenId' => $canteenId, 'payment_method' => $selectedMethod]);
     }
 
-    /**
-     * Update cart item quantity via AJAX
-     */
     public function updateQuantity(Request $request)
     {
         $request->validate([
@@ -112,8 +128,6 @@ class CartController extends Controller
 
         $oldQuantity = $cart->quantity;
         $cart->update(['quantity' => $request->quantity]);
-
-        // Reload untuk mendapatkan data terbaru
         $cart->refresh();
 
         return response()->json([
@@ -132,9 +146,6 @@ class CartController extends Controller
         ]);
     }
 
-    /**
-     * Get cart summary for checkout (dengan diskon)
-     */
     public function getCartSummary($canteenId = null)
     {
         $query = Cart::with(['menu', 'menu.discounts' => function($q) {
@@ -178,9 +189,6 @@ class CartController extends Controller
         return response()->json($summary);
     }
 
-    /**
-     * Clear cart for specific canteen after successful checkout
-     */
     public function clearCanteenCart($canteenId)
     {
         Cart::where('user_id', Auth::id())
@@ -190,13 +198,9 @@ class CartController extends Controller
         return response()->json(['message' => 'Cart cleared successfully']);
     }
 
-    /**
-     * Get cart count for navigation badge
-     */
     public function getCartCount()
     {
         $count = Cart::where('user_id', Auth::id())->sum('quantity');
-
         return response()->json(['count' => $count]);
     }
 }

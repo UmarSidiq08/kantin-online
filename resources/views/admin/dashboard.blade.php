@@ -3,15 +3,11 @@
 @section('title', 'Dashboard Admin Kantin')
 
 @section('content')
-    <!-- Header Section -->
     <div class="mb-8">
         <h1 class="text-2xl font-bold text-gray-900">Dashboard Admin</h1>
         <p class="text-gray-600 mt-1">Selamat datang kembali! Berikut adalah ringkasan bisnis Anda hari ini.</p>
     </div>
-
-    <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <!-- Total Pesanan -->
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -32,8 +28,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Total Pendapatan -->
         <div
             class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
             <div class="flex items-center">
@@ -55,8 +49,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Menu Terlaris -->
         <div
             class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
             <div class="flex items-start">
@@ -97,8 +89,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Chart Section -->
     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">

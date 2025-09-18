@@ -1,12 +1,8 @@
 @extends('layouts.admin')
-
 @section('title', 'Laporan Penjualan')
-
 @section('content')
     <div class="min-h-screen bg-gray-50 py-8">
         <div class="max-w-[98vw] mx-auto px-4 sm:px-6 lg:px-8">
-
-            <!-- Header -->
             <div class="mb-8 flex items-center justify-between">
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900">Laporan Penjualan</h1>
@@ -20,8 +16,6 @@
                     </svg>
                 </div>
             </div>
-
-            <!-- Summary Cards -->
             <div class="mb-8">
                 <h2 class="text-xl font-bold text-gray-900 mb-6">📅 Ringkasan Penjualan</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -36,8 +30,6 @@
                     @endforeach
                 </div>
             </div>
-
-            <!-- Chart Card -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">Grafik Pendapatan 7 Hari Terakhir</h3>
@@ -49,8 +41,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Filter Card -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h3 class="text-lg font-semibold text-gray-900">Filter & Pengaturan</h3>
@@ -75,7 +65,6 @@
                                 </div>
                             </div>
                         @endforeach
-
                         <div class="space-y-2">
                             <label class="block text-sm font-medium text-gray-700">Urutkan Berdasarkan</label>
                             <select id="sort_by"
@@ -87,7 +76,6 @@
                                 <option value="total_pendapatan_asc">Pendapatan (Terkecil)</option>
                             </select>
                         </div>
-
                         <div class="flex items-end">
                             <button id="reset-filter"
                                 class="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 flex items-center justify-center group">
@@ -103,8 +91,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Table Card -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                 <div class="px-6 py-4 border-b border-gray-200">
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -127,25 +113,20 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="overflow-hidden">
                     <div class="overflow-x-auto px-6 py-4">
                         <div class="min-w-[800px]">
                             <table class="w-full divide-y divide-gray-200" id="laporan-table">
                                 <thead class="bg-gray-50">
                                     <tr>
-
                                         @foreach ($headers as $header)
                                             <th
                                                 class="px-6 py-4 {{ $header['class'] }} text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                                {{ $header['text'] }}
-                                            </th>
+                                                {{ $header['text'] }}</th>
                                         @endforeach
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <!-- DataTable will populate this -->
-                                </tbody>
+                                <tbody class="bg-white divide-y divide-gray-200"></tbody>
                             </table>
                         </div>
                     </div>
@@ -153,19 +134,13 @@
             </div>
         </div>
     </div>
-
-
 @endsection
-
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         $(document).ready(function() {
-            // Utility functions
             const showLoading = () => $('#loading-overlay').removeClass('hidden');
             const hideLoading = () => $('#loading-overlay').addClass('hidden');
-
-            // DataTable configuration
             const tableConfig = {
                 processing: true,
                 serverSide: true,
@@ -234,47 +209,33 @@
                     [3, 'desc']
                 ]
             };
-
             const table = $('#laporan-table').DataTable(tableConfig);
-
-            // Event handlers
             const reloadTable = () => {
                 showLoading();
                 table.ajax.reload(hideLoading);
             };
-
             $('#sort_by').on('change', reloadTable);
-
             $('#filter-start-date, #filter-end-date').change(function() {
-                const startDate = $('#filter-start-date').val();
-                const endDate = $('#filter-end-date').val();
-
+                const startDate = $('#filter-start-date').val(),
+                    endDate = $('#filter-end-date').val();
                 if (startDate && endDate && startDate > endDate) {
                     alert('Tanggal mulai tidak boleh lebih besar dari tanggal akhir');
                     return;
                 }
-
-                if ((!startDate && !endDate) || (startDate && endDate)) {
-                    reloadTable();
-                }
+                if ((!startDate && !endDate) || (startDate && endDate)) reloadTable();
             });
-
             $('#reset-filter').click(function() {
                 $('#filter-start-date, #filter-end-date, #sort_by').val('');
                 reloadTable();
             });
-
-            // Export button loading state
             $('.inline-flex[href*="export"]').click(function() {
-                const button = $(this);
-                const originalHtml = button.html();
+                const button = $(this),
+                    originalHtml = button.html();
                 button.html(
                     '<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Mengunduh...'
-                );
+                    );
                 setTimeout(() => button.html(originalHtml), 3000);
             });
-
-            // Chart implementation
             $.get("{{ route('admin.laporan.chart') }}", function(data) {
                 const ctx = document.getElementById('chartCanvas').getContext('2d');
                 new Chart(ctx, {
@@ -293,7 +254,7 @@
                             pointBorderColor: '#ffffff',
                             pointBorderWidth: 2,
                             pointRadius: 5,
-                            pointHoverRadius: 7,
+                            pointHoverRadius: 7
                         }]
                     },
                     options: {

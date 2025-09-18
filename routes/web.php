@@ -29,29 +29,25 @@ require __DIR__ . '/auth.php';
 Route::get('/register', function () {
     return view('auth.register');
 });
+
 require __DIR__ . '/auth.php';
 Route::post('/premium/callback', [PremiumController::class, 'callback']);
 Route::middleware('auth')->group(function () {
 
-    Route::post('/balance/topup', [PaymentController::class, 'topUpBalance'])->name('user.balance.topup');
-    Route::post('/checkout/balance', [PaymentController::class, 'checkoutBalance'])->name('user.checkout.balance');
-    Route::post('/ratings', [RatingController::class, 'store'])->middleware('auth');
-    Route::get('/menus/{menu}/reviews', [RatingController::class, 'show'])->name('menus.reviews');
 
-    Route::controller(ProfileController::class)->group(function () {
-        Route::get('/profile', 'edit')->name('profile.edit');
-        Route::patch('/profile', 'update')->name('profile.update');
-        Route::delete('/profile', 'destroy')->name('profile.destroy');
-    });
+
+
     Route::middleware(['role:admin', 'can:canteen.owner'])->prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         Route::get('/riwayat-pesanan', [OrderController::class, 'logHistory'])->name('logs');
         Route::get('/riwayat-pesanan/data', [LogOrderController::class, 'data'])->name('logs.data');
 
-        Route::get('canteen/settings', [CanteenSettingsController::class, 'index'])->name('canteen.settings');
-        Route::put('canteen/settings', [CanteenSettingsController::class, 'updateSettings'])->name('canteen.update-settings');
-        Route::post('canteen/quick-toggle', [CanteenSettingsController::class, 'quickToggle'])->name('canteen.quick-toggle');
+        Route::prefix('canteen')->name('canteen.')->controller(CanteenSettingsController::class)->group(function () {
+            Route::get('/settings', 'index')->name('settings');
+            Route::put('/settings', 'updateSettings')->name('update-settings');
+            Route::post('/quick-toggle', 'quickToggle')->name('quick-toggle');
+        });
 
         Route::prefix('orders')->name('orders.')->controller(OrderController::class)->group(function () {
             Route::get('/', 'index')->name('index');
@@ -76,6 +72,7 @@ Route::middleware('auth')->group(function () {
         Route::prefix('laporan-penjualan')->name('laporan.')->controller(LaporanPenjualanController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/data', 'data')->name('data');
+
             Route::get('/admin/laporan/chart', 'chartData')->name('chart');
             Route::get('/export/excel', 'exportExcel')->name('export.excel');
             Route::get('/export/pdf', 'exportPDF')->name('export.pdf');
@@ -101,33 +98,31 @@ Route::middleware('auth')->group(function () {
             Route::get('/menu', 'index')->name('menu.index');
             Route::get('/pilih-kantin/{id}', 'pilihKantin')->name('pilih-kantin');
         });
-
-        // Update PaymentController routes untuk multi-canteen
         Route::controller(PaymentController::class)->group(function () {
             Route::get('/payment/success', 'success')->name('payment.success');
             Route::get('/payment/pending', 'pending')->name('payment.pending');
             Route::get('/payment/finish', 'handleFinish')->name('payment.finish');
 
-            // Legacy routes - redirect ke cart dengan info multi-canteen
             Route::post('/checkout', 'checkout')->name('checkout');
             Route::post('/checkout/cash', 'checkoutCash')->name('checkout.cash');
             Route::post('/checkout/balance', 'checkoutBalance')->name('checkout.balance');
 
-            // NEW: Route untuk checkout per kantin
             Route::post('/checkout/canteen/{canteenId}', 'checkoutCanteen')->name('checkout.canteen');
         });
-
         Route::prefix('orders')->name('orders.')->controller(UserOrderController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/success', 'success')->name('success');
             Route::get('/history', 'history')->name('history');
             Route::get('/history/table', 'table')->name('history.table');
         });
-
         Route::prefix('keranjang')->name('cart.')->controller(CartController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::post('/tambah', 'add')->name('add');
             Route::delete('/hapus/{id}', 'destroy')->name('destroy');
         });
+        Route::post('/balance/topup', [PaymentController::class, 'topUpBalance'])->name('balance.topup');
+        Route::post('/checkout/balance', [PaymentController::class, 'checkoutBalance'])->name('checkout.balance');
+        Route::post('/ratings', [RatingController::class, 'store'])->middleware('auth');
+        Route::get('/menus/{menu}/reviews', [RatingController::class, 'show'])->name('menus.reviews');
     });
 });

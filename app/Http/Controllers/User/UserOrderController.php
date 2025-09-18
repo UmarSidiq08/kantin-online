@@ -14,151 +14,109 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Yajra\DataTables\Facades\DataTables;
 
 class UserOrderController extends Controller
 {
- public function index(Request $request)
+
+    public function index(Request $request)
     {
         $canteenId = session('selected_canteen_id');
         if (!$canteenId) {
             return redirect()->route('user.dashboard')->with('error', 'Silakan pilih kantin terlebih dahulu.');
         }
 
-        // Load menus dengan relasi discount yang aktif
+        // Build query for menus with active discounts
         $query = Menu::where('canteen_id', $canteenId)
-            ->with(['discounts' => function($discountQuery) {
+            ->with(['discounts' => function ($discountQuery) {
                 $discountQuery->active()
-                    ->where(function($q) {
+                    ->where(function ($q) {
                         $now = now();
                         $today = $now->toDateString();
                         $currentTime = $now->format('H:i:s');
 
-                        // Filter berdasarkan tanggal
-                        $q->where(function($dateQuery) use ($today) {
+                        $q->where(function ($dateQuery) use ($today) {
                             $dateQuery->whereNull('start_date')
-                                     ->orWhere('start_date', '<=', $today);
+                                ->orWhere('start_date', '<=', $today);
                         })
-                        ->where(function($dateQuery) use ($today) {
-                            $dateQuery->whereNull('end_date')
-                                     ->orWhere('end_date', '>=', $today);
-                        })
-                        // Filter berdasarkan jam
-                        ->where(function($timeQuery) use ($currentTime) {
-                            $timeQuery->whereNull('start_time')
-                                     ->whereNull('end_time')
-                                     ->orWhere(function($tq) use ($currentTime) {
-                                         $tq->whereNotNull('start_time')
+                            ->where(function ($dateQuery) use ($today) {
+                                $dateQuery->whereNull('end_date')
+                                    ->orWhere('end_date', '>=', $today);
+                            })
+                            ->where(function ($timeQuery) use ($currentTime) {
+                                $timeQuery->whereNull('start_time')
+                                    ->whereNull('end_time')
+                                    ->orWhere(function ($tq) use ($currentTime) {
+                                        $tq->whereNotNull('start_time')
                                             ->whereNotNull('end_time')
                                             ->where('start_time', '<=', $currentTime)
                                             ->where('end_time', '>=', $currentTime);
-                                     });
-                        });
+                                    });
+                            });
                     });
             }]);
 
-        // Filter berdasarkan kategori
+        // Apply category filter
         if ($request->filled('category') && $request->category !== 'semua') {
             $query->where('category', $request->category);
         }
 
-        // Filter berdasarkan sorting
+        // Apply sorting
         $sort = $request->get('sort', 'default');
+        $menus = $this->applySorting($query, $sort);
 
-        switch ($sort) {
-            case 'terpopuler':
-                // Ambil semua menu dulu
-                $menus = $query->get();
+        // Process menu data (add formatting, ratings, etc.)
+        $menus = $this->processMenuData($menus);
 
-                // Ambil data penjualan
-                $salesData = OrderItem::select('menu_id', DB::raw('SUM(quantity) as total_sold'))
-                    ->whereHas('order', function ($orderQuery) use ($canteenId) {
-                        $orderQuery->where('canteen_id', $canteenId)
-                            ->where('status', 'selesai');
-                    })
-                    ->whereIn('menu_id', $menus->pluck('id'))
-                    ->groupBy('menu_id')
-                    ->pluck('total_sold', 'menu_id');
-
-                // Tambahkan informasi penjualan dan urutkan
-                $menus = $menus->map(function ($menu) use ($salesData) {
-                    $menu->total_sold = $salesData[$menu->id] ?? 0;
-                    return $menu;
-                })->sortByDesc('total_sold')->values(); // values() untuk reset index
-
-                break;
-
-            case 'harga_rendah':
-                $menus = $query->orderBy('price', 'asc')->get();
-                break;
-
-            case 'harga_tinggi':
-                $menus = $query->orderBy('price', 'desc')->get();
-                break;
-
-            case 'nama_az':
-                $menus = $query->orderBy('name', 'asc')->get();
-                break;
-
-            case 'nama_za':
-                $menus = $query->orderBy('name', 'desc')->get();
-                break;
-
-            default:
-                $menus = $query->orderBy('created_at', 'desc')->get();
-                break;
-        }
-
-        // Proses rating untuk setiap menu
-        $menus = $menus->map(function ($menu) {
-            $rating = $menu->averageRating();
-            $menu->full_stars = floor($rating);
-            $menu->has_half_star = ($rating - $menu->full_stars) >= 0.5;
-            $menu->empty_stars = 5 - $menu->full_stars - ($menu->has_half_star ? 1 : 0);
-            return $menu;
-        });
-
-        $canteen = Canteen::find($canteenId);
-
-        return view('user.orders.index', compact('menus', 'canteen'));
+        return view('user.orders.index', [
+            'menus' => $menus,
+            'canteen' => Canteen::find($canteenId),
+            'categoryOptions' => $this->getCategoryOptions(),
+            'sortOptions' => $this->getSortOptions()
+        ]);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'menus' => 'required|array',
-            'menus.*.id' => 'required|exists:menus,id',
-            'menus.*.quantity' => 'required|integer|min:1'
+        $validated = $request->validate([
+            'quantities' => 'required|array',
+            'quantities.*' => 'required|integer|min:1'
         ]);
 
         DB::beginTransaction();
         try {
-            // 1. Buat order
+            $canteenId = session('selected_canteen_id');
+            if (!$canteenId) {
+                return response()->json(['message' => 'Silakan pilih kantin terlebih dahulu.'], 400);
+            }
+
             $order = Order::create([
                 'user_id' => Auth::id(),
+                'canteen_id' => $canteenId,
                 'status' => Constant::ORDER_STATUS['PENDING'],
                 'total_price' => 0
             ]);
 
             $total = 0;
+            foreach ($validated['quantities'] as $menuId => $quantity) {
+                if ($quantity > 0) {
+                    $menu = Menu::findOrFail($menuId);
+                    $price = $menu->hasActiveDiscount() ? $menu->discount_info['discounted_price'] : $menu->price;
+                    $subtotal = $price * $quantity;
+                    $total += $subtotal;
 
-            // 2. Tambahkan setiap item ke order
-            foreach ($request->menus as $item) {
-                $menu = Menu::find($item['id']);
-                $subtotal = $menu->price * $item['quantity'];
-                $total += $subtotal;
-
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'menu_id' => $menu->id,
-                    'quantity' => $item['quantity'],
-                    'subtotal_price' => $subtotal
-                ]);
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'menu_id' => $menuId,
+                        'quantity' => $quantity,
+                        'price' => $price,
+                        'subtotal_price' => $subtotal
+                    ]);
+                }
             }
-            $order->update([
-                'total_price' => $total
-            ]);
 
+            $order->update(['total_price' => $total]);
             DB::commit();
 
             return response()->json([
@@ -177,8 +135,17 @@ class UserOrderController extends Controller
     public function history()
     {
         $orders = Order::where('user_id', Auth::id())
+            ->with(['items.menu', 'canteen'])
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->map(function ($order) {
+                $order->formatted_total_price = 'Rp ' . number_format($order->total_price, 0, ',', '.');
+                $order->formatted_created_at = $order->created_at->format('d M Y, H:i');
+                $order->status_display = ucfirst($order->status ?? '-');
+                $order->payment_method_display = ucfirst($order->payment_method ?? '-');
+                $order->payment_status_badge = $order->payment_status === 'paid' ? 'success' : 'warning';
+                return $order;
+            });
 
         return view('user.orders.history', [
             'orders' => $orders,
@@ -188,30 +155,144 @@ class UserOrderController extends Controller
 
     public function table(Request $request)
     {
-        $orders = Order::with(['items.menu', 'canteen'])->where('user_id', auth()->id())->latest();
+        $orders = Order::with(['items.menu', 'canteen'])
+            ->where('user_id', auth()->id())
+            ->latest();
 
         return DataTables::of($orders)
             ->addIndexColumn()
             ->editColumn('created_at', fn($order) => $order->created_at->format('d M Y, H:i'))
-            ->addColumn('canteen_name', function ($order) {
-                return $order->canteen ? $order->canteen->name : 'Unknown Canteen';
-            })
+            ->addColumn('canteen_name', fn($order) => $order->canteen ? $order->canteen->name : 'Unknown Canteen')
             ->addColumn('menus', function ($order) {
-                // Gabungkan semua nama menu yang dipesan
                 return $order->items->map(function ($item) {
                     return $item->menu->name . ' x' . $item->quantity;
                 })->implode('<br>');
             })
             ->addColumn('status', fn($order) => ucfirst($order->status ?? '-'))
             ->editColumn('total_price', fn($order) => 'Rp ' . number_format($order->total_price, 0, ',', '.'))
-            ->addColumn('payment_method', function ($order) {
-                return ucfirst($order->payment_method ?? '-');
-            })
+            ->addColumn('payment_method', fn($order) => ucfirst($order->payment_method ?? '-'))
             ->addColumn('payment_status', function ($order) {
                 $badge = $order->payment_status === 'paid' ? 'success' : 'warning';
                 return '<span class="badge bg-' . $badge . '">' . ucfirst($order->payment_status) . '</span>';
             })
             ->rawColumns(['status', 'menus', 'payment_status'])
             ->make(true);
+    }
+    private function getCategoryOptions()
+    {
+        return [
+            'semua' => '🍽️ Semua Menu',
+            'makanan' => '🍛 Makanan',
+            'minuman' => '🥤 Minuman',
+            'snack' => '🍿 Snack'
+        ];
+    }
+
+    private function getSortOptions()
+    {
+        return [
+            'default' => '📋 Default',
+            'terpopuler' => '🔥 Terpopuler',
+            'harga_rendah' => '💰 Harga Terendah',
+            'harga_tinggi' => '💎 Harga Tertinggi',
+            'nama_az' => '🔤 A-Z',
+            'nama_za' => '🔤 Z-A'
+        ];
+    }
+
+    private function processMenuData($menus)
+    {
+        // Get sales data for all menus at once
+        $menuIds = $menus->pluck('id');
+        $salesData = OrderItem::select('menu_id', DB::raw('SUM(quantity) as total_sold'))
+            ->whereHas('order', function ($query) {
+                $query->where('status', 'selesai');
+            })
+            ->whereIn('menu_id', $menuIds)
+            ->groupBy('menu_id')
+            ->pluck('total_sold', 'menu_id');
+
+        return $menus->map(function ($menu) use ($salesData) {
+            // Sales information
+            $menu->total_sold = $salesData[$menu->id] ?? 0;
+            $menu->formatted_total_sold = number_format($menu->total_sold, 0, ',', '.');
+
+            // Rating information
+            $rating = $menu->averageRating();
+            $menu->full_stars = floor($rating);
+            $menu->has_half_star = ($rating - $menu->full_stars) >= 0.5;
+            $menu->empty_stars = 5 - $menu->full_stars - ($menu->has_half_star ? 1 : 0);
+            $menu->formatted_average_rating = number_format($rating, 1);
+            $menu->total_ratings = $menu->totalRatings();
+
+            // Category display
+            $menu->category_display = Constant::MENU_CATEGORIES[$menu->category] ?? 'Tidak Diketahui';
+
+            // Discount information - menggunakan method langsung dari model
+            $menu->has_active_discount = $menu->hasActiveDiscount();
+
+            if ($menu->has_active_discount) {
+                $activeDiscount = $menu->activeDiscount();
+                $discountedPrice = $menu->getDiscountedPrice();
+                $discountAmount = $menu->getDiscountAmount();
+                $discountPercentage = round($menu->getDiscountPercentage());
+
+                // Set formatted prices for discount case
+                $menu->discount_percentage = $discountPercentage;
+                $menu->formatted_original_price = 'Rp ' . number_format($menu->price, 0, ',', '.');
+                $menu->formatted_discounted_price = 'Rp ' . number_format($discountedPrice, 0, ',', '.');
+                $menu->formatted_savings = 'Rp ' . number_format($discountAmount, 0, ',', '.');
+
+                // Discount period text
+                $periodText = '';
+                if ($activeDiscount->end_date) {
+                    $periodText .= 's/d ' . $activeDiscount->end_date->format('d/m/Y');
+                }
+                if ($activeDiscount->end_time) {
+                    $periodText .= ' ' . $activeDiscount->end_time->format('H:i');
+                }
+                $menu->discount_period = $periodText;
+            }
+
+            // Always set price display as string (avoid accessor conflict)
+            $menu->price_display = 'Rp ' . number_format($menu->price, 0, ',', '.');
+
+            return $menu;
+        });
+    }
+
+    private function applySorting($query, $sort)
+    {
+        switch ($sort) {
+            case 'terpopuler':
+                $menus = $query->get();
+                $salesData = OrderItem::select('menu_id', DB::raw('SUM(quantity) as total_sold'))
+                    ->whereHas('order', function ($orderQuery) {
+                        $orderQuery->where('status', 'selesai');
+                    })
+                    ->whereIn('menu_id', $menus->pluck('id'))
+                    ->groupBy('menu_id')
+                    ->pluck('total_sold', 'menu_id');
+
+                return $menus->map(function ($menu) use ($salesData) {
+                    $menu->total_sold = $salesData[$menu->id] ?? 0;
+                    return $menu;
+                })->sortByDesc('total_sold')->values();
+
+            case 'harga_rendah':
+                return $query->orderBy('price', 'asc')->get();
+
+            case 'harga_tinggi':
+                return $query->orderBy('price', 'desc')->get();
+
+            case 'nama_az':
+                return $query->orderBy('name', 'asc')->get();
+
+            case 'nama_za':
+                return $query->orderBy('name', 'desc')->get();
+
+            default:
+                return $query->orderBy('created_at', 'desc')->get();
+        }
     }
 }

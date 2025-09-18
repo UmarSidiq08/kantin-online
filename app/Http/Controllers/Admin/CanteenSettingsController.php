@@ -12,56 +12,25 @@ class CanteenSettingsController extends Controller
     public function index()
     {
         $canteen = Auth::user()->canteen;
-
         if (!$canteen) {
             return redirect()->back()->with('error', 'Kantin tidak ditemukan');
         }
-
-        // Prepare data untuk view
-        $days = [
-            'monday' => 'Senin',
-            'tuesday' => 'Selasa',
-            'wednesday' => 'Rabu',
-            'thursday' => 'Kamis',
-            'friday' => 'Jumat',
-            'saturday' => 'Sabtu',
-            'sunday' => 'Minggu'
-        ];
-
+        $days = ['monday'=>'Senin','tuesday'=>'Selasa','wednesday'=>'Rabu','thursday'=>'Kamis','friday'=>'Jumat','saturday'=>'Sabtu','sunday'=>'Minggu'];
         $operatingHours = $canteen->operating_hours ?: [];
-
-        // Process each day with default values
         $daysWithSchedule = [];
         foreach ($days as $dayKey => $dayName) {
-            $daySchedule = $operatingHours[$dayKey] ?? [
-                'is_open' => false,
-                'open_time' => '08:00',
-                'close_time' => '15:00'
-            ];
-
-            $daysWithSchedule[] = [
-                'key' => $dayKey,
-                'name' => $dayName,
-                'is_open' => $daySchedule['is_open'],
-                'open_time' => $daySchedule['open_time'],
-                'close_time' => $daySchedule['close_time']
-            ];
+            $daySchedule = $operatingHours[$dayKey] ?? ['is_open'=>false,'open_time'=>'08:00','close_time'=>'15:00'];
+            $daysWithSchedule[] = ['key'=>$dayKey,'name'=>$dayName,'is_open'=>$daySchedule['is_open'],'open_time'=>$daySchedule['open_time'],'close_time'=>$daySchedule['close_time']];
         }
-
-        return view('admin.canteen.settings', [
-            'canteen' => $canteen,
-            'daysWithSchedule' => $daysWithSchedule
-        ]);
+        return view('admin.canteen.settings', ['canteen'=>$canteen,'daysWithSchedule'=>$daysWithSchedule]);
     }
 
     public function updateSettings(Request $request)
     {
         $canteen = Auth::user()->canteen;
-
         if (!$canteen) {
             return redirect()->back()->with('error', 'Kantin tidak ditemukan');
         }
-
         $request->validate([
             'is_open' => 'sometimes|boolean',
             'operating_hours' => 'sometimes|array',
@@ -70,8 +39,6 @@ class CanteenSettingsController extends Controller
             'operating_hours.*.close_time' => 'required_if:operating_hours.*.is_open,1|date_format:H:i',
             'notes' => 'nullable|string|max:255'
         ]);
-
-        // Process operating hours
         $operatingHours = [];
         if ($request->has('operating_hours')) {
             foreach ($request->operating_hours as $day => $schedule) {
@@ -82,32 +49,21 @@ class CanteenSettingsController extends Controller
                 ];
             }
         }
-
-        // Update canteen
         $canteen->update([
             'is_open' => $request->has('is_open') ? true : false,
             'operating_hours' => $operatingHours,
             'notes' => $request->notes
         ]);
-
         return redirect()->back()->with('success', 'Pengaturan jam operasional berhasil disimpan!');
     }
 
-    /**
-     * Quick toggle untuk buka/tutup kantin
-     */
     public function quickToggle(Request $request)
     {
         $canteen = Auth::user()->canteen;
-
         if (!$canteen) {
             return response()->json(['error' => 'Kantin tidak ditemukan'], 404);
         }
-
-        $canteen->update([
-            'is_open' => !$canteen->is_open
-        ]);
-
+        $canteen->update(['is_open' => !$canteen->is_open]);
         return response()->json([
             'success' => true,
             'is_open' => $canteen->is_open,
@@ -115,5 +71,3 @@ class CanteenSettingsController extends Controller
         ]);
     }
 }
-
-

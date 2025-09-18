@@ -14,6 +14,7 @@ class Discount extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'end_time' => 'datetime',
         'is_active' => 'boolean'
     ];
 

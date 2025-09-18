@@ -1,5 +1,3 @@
-{{-- resources/views/admin/discounts/modal/edit.blade.php --}}
-
 <div class="modal fade" id="modal_edit" tabindex="-1" aria-labelledby="modal_edit_label" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
