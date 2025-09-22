@@ -204,6 +204,7 @@
                 selectedRating = parseInt(this.dataset.rating);
                 updateStars();
             });
+            
 
             star.addEventListener('mouseenter', function() {
                 const rating = parseInt(this.dataset.rating);

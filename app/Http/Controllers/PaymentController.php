@@ -18,23 +18,16 @@ use App\Models\User;
 
 class PaymentController extends Controller
 {
-    /**
-     * Legacy checkout - redirect ke cart dengan info multi-canteen
-     */
     public function checkout(Request $request)
     {
         return redirect()->route('user.cart.index')
             ->with('info', 'Silakan checkout per kantin secara terpisah.');
     }
 
-    /**
-     * Checkout untuk kantin tertentu
-     */
     public function checkoutCanteen($canteenId, Request $request)
     {
         $paymentMethod = $request->input('payment_method', 'cash');
 
-        // Validasi cart items untuk kantin ini
         $cartItems = Cart::with('menu')
             ->where('user_id', Auth::id())
             ->where('canteen_id', $canteenId)
@@ -44,8 +37,6 @@ class PaymentController extends Controller
             return redirect()->route('user.cart.index')
                 ->with('error', 'Tidak ada item di keranjang untuk kantin ini.');
         }
-
-        // Handle berbagai metode pembayaran
         switch ($paymentMethod) {
             case 'cash':
                 return $this->checkoutCashCanteen($canteenId, $cartItems);
@@ -62,9 +53,6 @@ class PaymentController extends Controller
         }
     }
 
-    /**
-     * Checkout cash untuk kantin tertentu
-     */
     private function checkoutCashCanteen($canteenId, $cartItems)
     {
         try {
@@ -95,12 +83,12 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // Hapus hanya cart items untuk kantin ini
             Cart::where('user_id', $user->id)
                 ->where('canteen_id', $canteenId)
                 ->delete();
 
             DB::commit();
+            session()->forget('current_order_id');
             session(['current_order_id' => $order->id]);
 
             return redirect()->route('user.payment.success')
@@ -113,9 +101,6 @@ class PaymentController extends Controller
         }
     }
 
-    /**
-     * Checkout balance untuk kantin tertentu
-     */
     private function checkoutBalanceCanteen($canteenId, $cartItems)
     {
         try {
@@ -161,12 +146,13 @@ class PaymentController extends Controller
                 $order->id
             );
 
-            // Hapus hanya cart items untuk kantin ini
             Cart::where('user_id', $user->id)
                 ->where('canteen_id', $canteenId)
                 ->delete();
 
             DB::commit();
+
+            session()->forget('current_order_id');
             session(['current_order_id' => $order->id]);
 
             return response()->json([
@@ -183,10 +169,6 @@ class PaymentController extends Controller
             ], 500);
         }
     }
-
-    /**
-     * Checkout digital untuk kantin tertentu
-     */
     private function checkoutDigitalCanteen($canteenId, $cartItems)
     {
         try {
@@ -257,10 +239,10 @@ class PaymentController extends Controller
     public function success(Request $request)
     {
         $orderId = session('current_order_id');
+        session()->forget('current_order_id');
 
         if ($orderId) {
             $order = Order::with(['items.menu', 'canteen'])->find($orderId);
-            session()->forget('current_order_id');
         } else {
             $order = Order::with(['items.menu', 'canteen'])
                 ->where('user_id', auth()->id())
@@ -271,28 +253,18 @@ class PaymentController extends Controller
 
         return view('user.payment.success', compact('order'));
     }
-
-    /**
-     * Legacy checkout cash - redirect ke cart
-     */
     public function checkoutCash(Request $request)
     {
         return redirect()->route('user.cart.index')
             ->with('info', 'Silakan checkout per kantin secara terpisah.');
     }
 
-    /**
-     * Legacy checkout balance - redirect ke cart
-     */
     public function checkoutBalance(Request $request)
     {
         return redirect()->route('user.cart.index')
             ->with('info', 'Silakan checkout per kantin secara terpisah.');
     }
 
-    /**
-     * Top up saldo via Midtrans
-     */
     public function topUpBalance(Request $request)
     {
         $request->validate([
@@ -352,6 +324,9 @@ class PaymentController extends Controller
         $order = Order::where('invoice', $orderId)->first();
 
         if ($order && $order->payment_status === Constant::PAYMENT_STATUS['PAID']) {
+            session()->forget('current_order_id');
+            session(['current_order_id' => $order->id]);
+
             return redirect()->route('user.payment.success');
         } else {
             return redirect()->route('user.cart.index')
