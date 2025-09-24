@@ -26,11 +26,12 @@
 
                 <!-- Success Message -->
                 <div class="space-y-4 bounce-in">
-                    <h1 class="text-2xl font-bold text-gray-800">Pembayaran Berhasil!</h1>
+                    <h1 class="text-2xl font-bold text-gray-800">{{ session('title', 'Pesanan Dikonfirmasi!') }}</h1>
                     <p class="text-gray-600 leading-relaxed">
-                        Terima kasih! Pesanan Anda telah berhasil diproses dan sedang dalam tahap persiapan.
+                        {{ session('message', 'Terima kasih! Pesanan Anda telah berhasil dikonfirmasi.') }}
                     </p>
                 </div>
+                
 
                 <!-- Order Status Info -->
                 <div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 my-6 bounce-in-delay">
@@ -204,7 +205,7 @@
                 selectedRating = parseInt(this.dataset.rating);
                 updateStars();
             });
-            
+
 
             star.addEventListener('mouseenter', function() {
                 const rating = parseInt(this.dataset.rating);

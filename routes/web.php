@@ -33,10 +33,6 @@ Route::get('/register', function () {
 require __DIR__ . '/auth.php';
 Route::post('/premium/callback', [PremiumController::class, 'callback']);
 Route::middleware('auth')->group(function () {
-
-
-
-
     Route::middleware(['role:admin', 'can:canteen.owner'])->prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

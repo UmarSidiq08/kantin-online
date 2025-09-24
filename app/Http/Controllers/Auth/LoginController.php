@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Auth;
 class LoginController extends Controller
 {
 
-    // custom redirect setelah login
     protected function redirectTo()
     {
         if (Auth::user()->role === 'admin') {
@@ -18,7 +17,7 @@ class LoginController extends Controller
             return '/user/dashboard';
         }
 
-        return '/'; // fallback jika role tidak cocok
+        return '/';
     }
 
     public function __construct()

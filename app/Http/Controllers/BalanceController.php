@@ -9,9 +9,6 @@ use Illuminate\Support\Facades\Auth;
 
 class BalanceController extends Controller
 {
-    /**
-     * Show balance history
-     */
     public function history(Request $request)
     {
         /** @var User $user */
@@ -24,10 +21,6 @@ class BalanceController extends Controller
 
         return view('user.balance.history', compact('transactions'));
     }
-
-    /**
-     * Get balance info (untuk AJAX)
-     */
     public function getBalance()
     {
         /** @var User $user */

@@ -13,7 +13,6 @@ class UserController extends Controller
     {
         $canteens = Canteen::all();
 
-        // Process setiap kantin dengan status dan info jam operasional
         $canteensWithStatus = $canteens->map(function ($canteen) {
             $isOpen = $canteen->isOpen();
             $todaySchedule = $canteen->getTodaySchedule();

@@ -63,7 +63,7 @@ class LaporanPenjualanController extends Controller
             ['text' => 'Total Pendapatan', 'class' => 'w-40 text-right'],
             ['text' => 'Terakhir Terjual', 'class' => 'w-40 text-center'],
         ];
-        return view('admin.laporan.index', compact('today','totalToday','totalYesterday','totalThisMonth','month','year','summaryData','filters','exportButtons','headers'));
+        return view('admin.laporan.index', compact('today', 'totalToday', 'totalYesterday', 'totalThisMonth', 'month', 'year', 'summaryData', 'filters', 'exportButtons', 'headers'));
     }
 
     public function data(Request $request)
@@ -72,7 +72,15 @@ class LaporanPenjualanController extends Controller
         $start = $request->start_date;
         $end = $request->end_date;
         $sortBy = $request->sort_by;
-        $query = OrderItem::with('menu')->join('menus', 'order_items.menu_id', '=', 'menus.id')->select('order_items.menu_id','menus.name as menu_name',DB::raw('SUM(order_items.quantity) as total_terjual'),DB::raw('SUM(order_items.quantity * order_items.price) as total_pendapatan'),DB::raw('MAX(order_items.created_at) as terakhir_terjual'))->whereHas('order', fn($q) => $q->where('status', 'selesai'))->where('menus.canteen_id', $canteenId)->groupBy('order_items.menu_id', 'menus.name');
+        $query = OrderItem::with('menu')->join('menus', 'order_items.menu_id', '=', 'menus.id')
+            ->select(
+                'order_items.menu_id',
+                'menus.name as menu_name',
+                DB::raw('SUM(order_items.quantity) as total_terjual'),
+                DB::raw('SUM(order_items.quantity * order_items.price) as total_pendapatan'),
+                DB::raw('MAX(order_items.created_at) as terakhir_terjual')
+            )->whereHas('order', fn($q) => $q->where('status', 'selesai'))->where('menus.canteen_id', $canteenId)->groupBy('order_items.menu_id', 'menus.name');
+
         if ($start && $end) {
             $query->whereBetween(DB::raw('DATE(order_items.created_at)'), [$start, $end]);
         }
@@ -113,19 +121,36 @@ class LaporanPenjualanController extends Controller
         return Excel::download(new MenuSalesExport($start, $end, $canteenId), 'laporan_penjualan_menu.xlsx');
     }
 
-    public function exportPDF(Request $request)
-    {
-        $canteenId = auth()->user()->canteen->id;
-        $start = $request->start_date;
-        $end = $request->end_date;
-        $query = OrderItem::join('menus', 'order_items.menu_id', '=', 'menus.id')->select('menus.name as menu_name',DB::raw('SUM(order_items.quantity) as total_terjual'),DB::raw('SUM(order_items.quantity * order_items.price) as total_pendapatan'),DB::raw('MAX(order_items.created_at) as terakhir_terjual'))->whereHas('order', fn($q) => $q->where('status', 'selesai'))->where('menus.canteen_id', $canteenId)->groupBy('menus.name');
-        if ($start && $end) {
-            $query->whereBetween(DB::raw('DATE(order_items.created_at)'), [$start, $end]);
-        }
-        $data = $query->get();
-        $pdf = Pdf::loadView('exports.menu_sales', compact('data'));
-        return $pdf->download('laporan_penjualan_menu.pdf');
+  public function exportPDF(Request $request)
+{
+    $canteenId = auth()->user()->canteen->id;
+    $start = $request->start_date;
+    $end = $request->end_date;
+
+    $query = OrderItem::join('menus', 'order_items.menu_id', '=', 'menus.id')
+        ->select(
+            'menus.name as menu_name',
+            DB::raw('SUM(order_items.quantity) as total_terjual'),
+            DB::raw('SUM(order_items.quantity * order_items.price) as total_pendapatan'),
+            DB::raw('MAX(order_items.created_at) as terakhir_terjual')
+        )
+        ->whereHas('order', fn($q) => $q->where('status', 'selesai'))
+        ->where('menus.canteen_id', $canteenId)
+        ->groupBy('menus.name');
+
+    if ($start && $end) {
+        $query->whereBetween(DB::raw('DATE(order_items.created_at)'), [$start, $end]);
     }
+
+    $data = $query->orderBy('total_terjual', 'desc')->get();
+
+    // Hitung total untuk summary
+    $totalItems = $data->sum('total_terjual');
+    $totalRevenue = $data->sum('total_pendapatan');
+
+    $pdf = Pdf::loadView('exports.menu_sales', compact('data', 'totalItems', 'totalRevenue'));
+    return $pdf->download('laporan_penjualan_menu.pdf');
+}
 
     public function chartData()
     {

@@ -197,7 +197,7 @@ class PaymentController extends Controller
                     'first_name' => $user->name,
                     'email' => $user->email,
                 ],
-                'item_details' => $cartItems->map(function($item) {
+                'item_details' => $cartItems->map(function ($item) {
                     return [
                         'id' => $item->menu_id,
                         'price' => $item->menu->price,
@@ -227,7 +227,6 @@ class PaymentController extends Controller
                 'order_temp_id' => $orderId,
                 'canteen_id' => $canteenId
             ]);
-
         } catch (\Exception $e) {
             Log::error('Checkout digital error: ' . $e->getMessage());
             return response()->json([
@@ -239,7 +238,6 @@ class PaymentController extends Controller
     public function success(Request $request)
     {
         $orderId = session('current_order_id');
-        session()->forget('current_order_id');
 
         if ($orderId) {
             $order = Order::with(['items.menu', 'canteen'])->find($orderId);
@@ -250,7 +248,27 @@ class PaymentController extends Controller
                 ->latest()
                 ->first();
         }
+        if ($order) {
+            $isPaid = ($order->payment_method === 'digital' && $order->payment_status === Constant::PAYMENT_STATUS['PAID']) ||
+                ($order->payment_method === 'balance' && $order->payment_status === Constant::PAYMENT_STATUS['PAID']);
 
+            $isUnpaidCash = $order->payment_method === 'cash' && $order->payment_status === Constant::PAYMENT_STATUS['UNPAID'];
+
+            if ($isPaid) {
+                $title = 'Pembayaran Berhasil!';
+                $message = 'Terima kasih! Pesanan Anda telah berhasil diproses dan sedang dalam tahap persiapan.';
+            } elseif ($isUnpaidCash) {
+                $title = 'Pesanan Berhasil Dibuat!';
+                $message = 'Pesanan Anda telah berhasil dibuat dan sedang dalam tahap persiapan. Silakan lakukan pembayaran saat mengambil pesanan.';
+            } else {
+                $title = 'Pesanan Dikonfirmasi!';
+                $message = 'Terima kasih! Pesanan Anda telah berhasil dikonfirmasi.';
+            }
+
+            session(['title' => $title, 'message' => $message]);
+        }
+
+        session()->forget('current_order_id');
         return view('user.payment.success', compact('order'));
     }
     public function checkoutCash(Request $request)
@@ -327,7 +345,27 @@ class PaymentController extends Controller
             session()->forget('current_order_id');
             session(['current_order_id' => $order->id]);
 
-            return redirect()->route('user.payment.success');
+            // Tentukan title dan message berdasarkan payment method
+            $isPaid = ($order->payment_method === 'digital' && $order->payment_status === Constant::PAYMENT_STATUS['PAID']) ||
+                ($order->payment_method === 'balance' && $order->payment_status === Constant::PAYMENT_STATUS['PAID']);
+
+            $isUnpaidCash = $order->payment_method === 'cash' && $order->payment_status === Constant::PAYMENT_STATUS['UNPAID'];
+
+            if ($isPaid) {
+                $title = 'Pembayaran Berhasil!';
+                $message = 'Terima kasih! Pesanan Anda telah berhasil diproses dan sedang dalam tahap persiapan.';
+            } elseif ($isUnpaidCash) {
+                $title = 'Pesanan Berhasil Dibuat!';
+                $message = 'Pesanan Anda telah berhasil dibuat dan sedang dalam tahap persiapan. Silakan lakukan pembayaran saat mengambil pesanan.';
+            } else {
+                $title = 'Pesanan Dikonfirmasi!';
+                $message = 'Terima kasih! Pesanan Anda telah berhasil dikonfirmasi.';
+            }
+
+            return redirect()->route('user.payment.success')->with([
+                'title' => $title,
+                'message' => $message
+            ]);
         } else {
             return redirect()->route('user.cart.index')
                 ->with('info', 'Pembayaran belum selesai. Silakan lanjutkan pembayaran atau coba lagi.');
