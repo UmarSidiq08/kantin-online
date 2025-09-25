@@ -59,7 +59,7 @@
                             </div>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="is_open" value="1" class="sr-only peer"
+                            <input type="checkbox" name="is_open" value="1" class="sr-only peer" id="main-toggle"
                                    {{ $canteen->is_open ? 'checked' : '' }}>
                             <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600 shadow-sm"></div>
                         </label>
@@ -91,12 +91,19 @@
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" name="operating_hours[{{ $day['key'] }}][is_open]" value="1"
                                            class="sr-only peer day-toggle" data-day="{{ $day['key'] }}"
-                                           {{ $day['is_open'] ? 'checked' : '' }}>
-                                    <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600 shadow-sm"></div>
+                                           data-original-state="{{ $day['is_open'] ? '1' : '0' }}"
+                                           {{ $day['is_open'] && $canteen->is_open ? 'checked' : '' }}>
+
+                                    <!-- Hidden input untuk menyimpan status asli -->
+                                    <input type="hidden" name="operating_hours[{{ $day['key'] }}][original_is_open]"
+                                           value="{{ $day['is_open'] ? '1' : '0' }}"
+                                           class="original-state-{{ $day['key'] }}">
+
+                                    <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600 shadow-sm day-toggle-ui"></div>
                                 </label>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 time-inputs-{{ $day['key'] }}" style="{{ !$day['is_open'] ? 'display: none' : '' }}">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 time-inputs-{{ $day['key'] }}" style="{{ !$day['is_open'] || !$canteen->is_open ? 'display: none' : '' }}">
                                 <div class="space-y-2">
                                     <label class="flex items-center text-sm font-semibold text-gray-700 mb-2">
                                         <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,29 +148,113 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Handle day toggle with smooth animation
-        document.querySelectorAll('.day-toggle').forEach(function(toggle) {
+        const mainToggle = document.getElementById('main-toggle');
+        const dayToggles = document.querySelectorAll('.day-toggle');
+
+        // Store original states when page loads
+        const originalStates = {};
+        dayToggles.forEach(function(toggle) {
+            const day = toggle.dataset.day;
+            originalStates[day] = toggle.dataset.originalState === '1';
+        });
+
+        // Handle main toggle (override)
+        mainToggle.addEventListener('change', function() {
+            const isMainOpen = this.checked;
+
+            dayToggles.forEach(function(dayToggle) {
+                const day = dayToggle.dataset.day;
+                const timeInputs = document.querySelector('.time-inputs-' + day);
+                const toggleUI = dayToggle.nextElementSibling; // The UI toggle element
+
+                if (isMainOpen) {
+                    // Ketika main toggle dinyalakan, kembalikan ke status asli
+                    const originalState = originalStates[day];
+                    dayToggle.checked = originalState;
+
+                    // Update UI toggle appearance
+                    if (originalState) {
+                        toggleUI.classList.add('peer-checked:bg-blue-600');
+                        toggleUI.classList.remove('bg-gray-200');
+                        showTimeInputs(timeInputs);
+                    } else {
+                        toggleUI.classList.remove('peer-checked:bg-blue-600');
+                        toggleUI.classList.add('bg-gray-200');
+                        hideTimeInputs(timeInputs);
+                    }
+
+                    // Enable day toggle interaction
+                    dayToggle.disabled = false;
+                    dayToggle.parentElement.style.opacity = '1';
+                    dayToggle.parentElement.style.cursor = 'pointer';
+
+                } else {
+                    // Ketika main toggle dimatikan, matikan semua hari tapi simpan status asli
+                    dayToggle.checked = false;
+
+                    // Update UI toggle appearance to disabled state
+                    toggleUI.classList.remove('peer-checked:bg-blue-600');
+                    toggleUI.classList.add('bg-gray-200');
+                    hideTimeInputs(timeInputs);
+
+                    // Disable day toggle interaction
+                    dayToggle.disabled = true;
+                    dayToggle.parentElement.style.opacity = '0.5';
+                    dayToggle.parentElement.style.cursor = 'not-allowed';
+                }
+            });
+        });
+
+        // Handle individual day toggles
+        dayToggles.forEach(function(toggle) {
             toggle.addEventListener('change', function() {
                 const day = this.dataset.day;
                 const timeInputs = document.querySelector('.time-inputs-' + day);
 
+                // Update original state when user manually changes
+                if (!this.disabled) {
+                    originalStates[day] = this.checked;
+                    // Update hidden input for original state
+                    const originalStateInput = document.querySelector('.original-state-' + day);
+                    if (originalStateInput) {
+                        originalStateInput.value = this.checked ? '1' : '0';
+                    }
+                }
+
                 if (this.checked) {
-                    timeInputs.style.display = 'grid';
-                    // Add fade in animation
-                    timeInputs.style.opacity = '0';
-                    setTimeout(() => {
-                        timeInputs.style.transition = 'opacity 0.3s ease-in-out';
-                        timeInputs.style.opacity = '1';
-                    }, 10);
+                    showTimeInputs(timeInputs);
                 } else {
-                    timeInputs.style.transition = 'opacity 0.3s ease-in-out';
-                    timeInputs.style.opacity = '0';
-                    setTimeout(() => {
-                        timeInputs.style.display = 'none';
-                    }, 300);
+                    hideTimeInputs(timeInputs);
                 }
             });
         });
+
+        // Initialize states on page load
+        if (!mainToggle.checked) {
+            dayToggles.forEach(function(dayToggle) {
+                dayToggle.disabled = true;
+                dayToggle.parentElement.style.opacity = '0.5';
+                dayToggle.parentElement.style.cursor = 'not-allowed';
+            });
+        }
+
+        // Helper functions for smooth animations
+        function showTimeInputs(timeInputs) {
+            timeInputs.style.display = 'grid';
+            timeInputs.style.opacity = '0';
+            setTimeout(() => {
+                timeInputs.style.transition = 'opacity 0.3s ease-in-out';
+                timeInputs.style.opacity = '1';
+            }, 10);
+        }
+
+        function hideTimeInputs(timeInputs) {
+            timeInputs.style.transition = 'opacity 0.3s ease-in-out';
+            timeInputs.style.opacity = '0';
+            setTimeout(() => {
+                timeInputs.style.display = 'none';
+            }, 300);
+        }
 
         // Add hover effects to form elements
         const inputs = document.querySelectorAll('input[type="time"], textarea');
@@ -202,6 +293,12 @@
 
     textarea::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
+    }
+
+    /* Disabled toggle styles */
+    input:disabled + div {
+        opacity: 0.5;
+        cursor: not-allowed !important;
     }
 </style>
 @endpush

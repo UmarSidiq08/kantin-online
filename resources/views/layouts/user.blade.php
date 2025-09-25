@@ -196,8 +196,8 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Jumlah Top Up</label>
                 <input type="number" id="topUpAmount"
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Masukkan jumlah (min. Rp 10.000)" min="10000" max="1000000">
-                <div class="text-xs text-gray-500 mt-1">Minimum Rp 10.000, Maximum Rp 1.000.000</div>
+                    placeholder="Masukkan jumlah (min. Rp 1.000)" min="10" max="1000000">
+                <div class="text-xs text-gray-500 mt-1">Minimum Rp 1.000, Maximum Rp 1.000.000</div>
             </div>
             <div class="grid grid-cols-3 gap-2 mb-4">
                 <button class="topup-quick px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium"
@@ -220,7 +220,7 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}"></script>
+    <script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config('midtrans.client_key') }}"></script>
 
     <script>
         document.querySelector('.mobile-menu-button').addEventListener('click', function() {
@@ -294,11 +294,11 @@
 
         btnConfirmTopUp.addEventListener('click', function() {
             const amount = parseInt(topUpAmount.value);
-            if (!amount || amount < 10000 || amount > 1000000) {
+            if (!amount || amount < 10 || amount > 1000000) {
                 if (typeof toastr !== 'undefined') {
-                    toastr.error('Jumlah top up harus antara Rp 10.000 - Rp 1.000.000')
+                    toastr.error('Jumlah top up harus antara Rp 1.000 - Rp 1.000.000')
                 } else {
-                    alert('Jumlah top up harus antara Rp 10.000 - Rp 1.000.000')
+                    alert('Jumlah top up harus antara Rp 1.000 - Rp 1.000.000')
                 }
                 return
             }

@@ -7,7 +7,9 @@
         <h1 class="text-2xl font-bold text-gray-900">Dashboard Admin</h1>
         <p class="text-gray-600 mt-1">Selamat datang kembali! Berikut adalah ringkasan bisnis Anda hari ini.</p>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+    <!-- First Row: Total Orders + Total Revenue -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -28,8 +30,8 @@
                 </div>
             </div>
         </div>
-        <div
-            class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
             <div class="flex items-center">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -49,8 +51,86 @@
                 </div>
             </div>
         </div>
-        <div
-            class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+    </div>
+
+    <!-- Second Row: Revenue Breakdown by Payment Method -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-5 flex-1">
+                    <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Pendapatan Cash</h3>
+                    <div class="flex items-baseline mt-2">
+                        <p class="text-2xl font-bold text-gray-900">{{ number_format($cashRevenue, 0, ',', '.') }}</p>
+                        <p class="ml-2 text-sm font-medium text-gray-400">IDR</p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{ $totalRevenue > 0 ? number_format(($cashRevenue / $totalRevenue) * 100, 1) : '0' }}% dari total
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-5 flex-1">
+                    <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Pendapatan Digital</h3>
+                    <div class="flex items-baseline mt-2">
+                        <p class="text-2xl font-bold text-gray-900">{{ number_format($digitalRevenue, 0, ',', '.') }}</p>
+                        <p class="ml-2 text-sm font-medium text-gray-400">IDR</p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{ $totalRevenue > 0 ? number_format(($digitalRevenue / $totalRevenue) * 100, 1) : '0' }}% dari total
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9m0-9c-5 0-9 4-9 9s4 9 9 9">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-5 flex-1">
+                    <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Pendapatan Saldo</h3>
+                    <div class="flex items-baseline mt-2">
+                        <p class="text-2xl font-bold text-gray-900">{{ number_format($balanceRevenue, 0, ',', '.') }}</p>
+                        <p class="ml-2 text-sm font-medium text-gray-400">IDR</p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">
+                        {{ $totalRevenue > 0 ? number_format(($balanceRevenue / $totalRevenue) * 100, 1) : '0' }}% dari total
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Third Row: Top Menu -->
+    <div class="grid grid-cols-1 gap-6 mb-8">
+        <div class="bg-white shadow-sm rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
             <div class="flex items-start">
                 <div class="flex-shrink-0">
                     <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
@@ -89,6 +169,8 @@
             </div>
         </div>
     </div>
+
+    <!-- Chart Section -->
     <div class="bg-white shadow-sm rounded-lg border border-gray-200">
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
@@ -96,7 +178,6 @@
                     <h2 class="text-lg font-semibold text-gray-900">Analitik Menu Terlaris</h2>
                     <p class="text-sm text-gray-500 mt-1">Grafik performa menu berdasarkan jumlah pesanan</p>
                 </div>
-
             </div>
         </div>
         <div class="p-6">

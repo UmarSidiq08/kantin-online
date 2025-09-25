@@ -286,7 +286,7 @@ class PaymentController extends Controller
     public function topUpBalance(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:10000|max:1000000',
+            'amount' => 'required|numeric|min:10|max:1000000',
         ]);
 
         $userId = auth()->id();
