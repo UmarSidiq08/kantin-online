@@ -32,8 +32,6 @@ class Order extends Model
     {
         return $this->hasMany(Rating::class);
     }
-
-    // Helper method untuk mendapatkan nama kantin
     public function getCanteenNameAttribute()
     {
         return $this->canteen ? $this->canteen->name : 'Unknown Canteen';

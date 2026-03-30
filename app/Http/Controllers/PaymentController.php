@@ -58,8 +58,11 @@ class PaymentController extends Controller
         try {
             $user = Auth::user();
             $total = 0;
+
+            // Hitung total dengan diskon
             foreach ($cartItems as $item) {
-                $total += $item->menu->price * $item->quantity;
+                $pricePerItem = $item->menu->getDiscountedPrice();
+                $total += $pricePerItem * $item->quantity;
             }
 
             DB::beginTransaction();
@@ -74,12 +77,15 @@ class PaymentController extends Controller
                 'invoice' => 'CASH-' . time() . '-' . $user->id,
             ]);
 
+            // Simpan order items dengan harga setelah diskon
             foreach ($cartItems as $item) {
+                $price = $item->menu->getDiscountedPrice();
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'menu_id' => $item->menu_id,
                     'quantity' => $item->quantity,
-                    'price' => $item->menu->price,
+                    'price' => $price,
                 ]);
             }
 
@@ -88,6 +94,7 @@ class PaymentController extends Controller
                 ->delete();
 
             DB::commit();
+
             session()->forget('current_order_id');
             session(['current_order_id' => $order->id]);
 
@@ -107,8 +114,11 @@ class PaymentController extends Controller
             /** @var User $user */
             $user = Auth::user();
             $total = 0;
+
+            // Hitung total dengan diskon menggunakan method yang sudah ada
             foreach ($cartItems as $item) {
-                $total += $item->menu->price * $item->quantity;
+                $pricePerItem = $item->menu->getDiscountedPrice();
+                $total += $pricePerItem * $item->quantity;
             }
 
             if (!$user->hasEnoughBalance($total)) {
@@ -131,12 +141,15 @@ class PaymentController extends Controller
                 'invoice' => 'BALANCE-' . time() . '-' . $user->id,
             ]);
 
+            // Simpan order items dengan harga setelah diskon
             foreach ($cartItems as $item) {
+                $price = $item->menu->getDiscountedPrice();
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'menu_id' => $item->menu_id,
                     'quantity' => $item->quantity,
-                    'price' => $item->menu->price,
+                    'price' => $price,
                 ]);
             }
 
@@ -174,8 +187,10 @@ class PaymentController extends Controller
         try {
             $userId = auth()->id();
             $total = 0;
+
             foreach ($cartItems as $item) {
-                $total += $item->menu->price * $item->quantity;
+                $pricePerItem = $item->menu->getDiscountedPrice();
+                $total += $pricePerItem * $item->quantity;
             }
 
             $orderId = 'ORDER-' . time() . '-' . $userId . '-' . $canteenId;
@@ -186,7 +201,26 @@ class PaymentController extends Controller
             Config::$is3ds = config('midtrans.3ds');
 
             $user = auth()->user();
-            $canteenName = $cartItems->first()->menu->canteen->name;
+
+            // Buat item details dengan harga setelah diskon
+            $itemDetails = $cartItems->map(function ($item) {
+                $menu = $item->menu;
+                $price = $menu->getDiscountedPrice();
+                $activeDiscount = $menu->activeDiscount();
+
+                if ($activeDiscount) {
+                    $itemName = $menu->name . ' (Diskon ' . $activeDiscount->formatted_value . ')';
+                } else {
+                    $itemName = $menu->name;
+                }
+
+                return [
+                    'id' => $menu->id,
+                    'price' => $price,
+                    'quantity' => $item->quantity,
+                    'name' => $itemName,
+                ];
+            })->toArray();
 
             $params = [
                 'transaction_details' => [
@@ -197,22 +231,20 @@ class PaymentController extends Controller
                     'first_name' => $user->name,
                     'email' => $user->email,
                 ],
-                'item_details' => $cartItems->map(function ($item) {
-                    return [
-                        'id' => $item->menu_id,
-                        'price' => $item->menu->price,
-                        'quantity' => $item->quantity,
-                        'name' => $item->menu->name,
-                    ];
-                })->toArray(),
+                'item_details' => $itemDetails,
                 'callbacks' => [
                     'finish' => route('user.payment.finish')
                 ],
                 'custom_field1' => json_encode($cartItems->map(function ($item) {
+                    $menu = $item->menu;
+                    $price = $menu->getDiscountedPrice();
+                    $activeDiscount = $menu->activeDiscount();
+
                     return [
-                        'menu_id' => $item->menu_id,
+                        'menu_id' => $menu->id,
                         'quantity' => $item->quantity,
-                        'price' => $item->menu->price
+                        'price' => $price,
+                        'discount_id' => $activeDiscount ? $activeDiscount->id : null
                     ];
                 })),
                 'custom_field2' => $canteenId,
@@ -286,7 +318,7 @@ class PaymentController extends Controller
     public function topUpBalance(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:10|max:1000000',
+            'amount' => 'required|numeric|min:10000|max:1000000',
         ]);
 
         $userId = auth()->id();

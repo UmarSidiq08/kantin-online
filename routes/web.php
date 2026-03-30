@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\DiscountController;
 
 
 Route::post('/premium/callback', [PremiumController::class, 'callback'])->name('callback');
+
 Route::get('/', function () {
     return view('auth.login');
 });
@@ -31,7 +32,9 @@ Route::get('/register', function () {
 });
 
 require __DIR__ . '/auth.php';
-Route::post('/premium/callback', [PremiumController::class, 'callback']);
+
+Route::post('/payment/callback', [PremiumController::class, 'callback'])
+    ->name('payment.callback');
 Route::middleware('auth')->group(function () {
     Route::middleware(['role:admin', 'can:canteen.owner'])->prefix('admin')->name('admin.')->group(function () {
 

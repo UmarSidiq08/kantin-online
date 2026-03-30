@@ -12,8 +12,8 @@ class Menu extends Model
     protected $guarded = ['id'];
     protected $casts = [
         'end_date' => 'date',
-        'end_time' => 'datetime', // or 'time' if it's just time
-        // ... other casts
+        'end_time' => 'datetime',
+  
     ];
 
     public function canteen()
@@ -26,7 +26,6 @@ class Menu extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    // Tambah ke Model Menu yang udah ada
     public function ratings()
     {
         return $this->hasMany(Rating::class);

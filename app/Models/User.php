@@ -23,7 +23,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'balance', // Tambahkan balance ke fillable
+        'balance',
+        'alamat',
     ];
 
     /**
@@ -44,7 +45,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-        'balance' => 'decimal:2', // Cast balance sebagai decimal
+        'balance' => 'decimal:2',
     ];
 
     public function canteen()
@@ -61,9 +62,7 @@ class User extends Authenticatable
         return $this->hasMany(BalanceTransaction::class);
     }
 
-    /**
-     * Check apakah saldo mencukupi
-     */
+
     public function hasEnoughBalance($amount)
     {
         return $this->balance >= $amount;

@@ -47,74 +47,203 @@ class PremiumController extends Controller
         return response()->json(['token' => $snapToken]);
     }
 
-    public function callback(Request $request)
-    {
-        try {
-            Config::$serverKey = config('midtrans.server_key');
-            Config::$isProduction = config('midtrans.is_production');
-            $notif = new Notification();
-            $transactionStatus = $notif->transaction_status;
-            $orderId = $notif->order_id;
-            if (str_starts_with($orderId, 'PREMIUM-')) {
-                $canteen = Canteen::where('midtrans_order_id', $orderId)->first();
-                if (!$canteen) {
-                    Log::error('Canteen not found for premium callback', ['order_id' => $orderId]);
-                    return response()->json(['message' => 'Canteen not found'], 404);
-                }
-                if (in_array($transactionStatus, ['capture', 'settlement'])) {
-                    $canteen->is_premium = true;
-                    $canteen->save();
-                }
-            } elseif (str_starts_with($orderId, 'TOPUP-')) {
-                if (in_array($transactionStatus, ['capture', 'settlement'])) {
-                    try {
-                        $userId = $notif->custom_field2;
-                        $amount = $notif->custom_field3;
-                        if (!$userId || !$amount) {
-                            Log::error('Missing top-up data in callback', ['order_id' => $orderId]);
-                            return response()->json(['message' => 'Missing top-up data'], 400);
-                        }
-                        $user = User::find($userId);
-                        if (!$user) {
-                            Log::error('User not found for top-up callback', ['user_id' => $userId, 'order_id' => $orderId]);
-                            return response()->json(['message' => 'User not found'], 404);
-                        }
-                        DB::beginTransaction();
-                        $user->addBalance($amount, "Top up saldo via Midtrans - #{$orderId}", $orderId);
-                        DB::commit();
-                        Log::info('Top-up successful', ['user_id' => $userId, 'amount' => $amount, 'order_id' => $orderId, 'new_balance' => $user->balance]);
-                    } catch (\Exception $e) {
-                        DB::rollBack();
-                        Log::error('Error processing top-up after payment: ' . $e->getMessage(), ['order_id' => $orderId, 'user_id' => $userId ?? 'unknown', 'amount' => $amount ?? 'unknown']);
-                    }
-                }
-            } elseif (str_starts_with($orderId, 'ORDER-')) {
-                if (in_array($transactionStatus, ['capture', 'settlement'])) {
-                    try {
-                        $cartData = json_decode($notif->custom_field1, true);
-                        $canteenId = $notif->custom_field2;
-                        $userId = $notif->custom_field3;
-                        if (!$cartData || !$canteenId || !$userId) {
-                            Log::error('Missing cart data in callback', ['order_id' => $orderId]);
-                            return response()->json(['message' => 'Missing cart data'], 400);
-                        }
-                        DB::beginTransaction();
-                        $order = Order::create(['user_id' => $userId, 'canteen_id' => $canteenId, 'payment_method' => 'digital', 'status' => Constant::ORDER_STATUS['PENDING'], 'payment_status' => Constant::PAYMENT_STATUS['PAID'], 'total_price' => $notif->gross_amount, 'invoice' => $orderId]);
-                        foreach ($cartData as $item) {
-                            OrderItem::create(['order_id' => $order->id, 'menu_id' => $item['menu_id'], 'quantity' => $item['quantity'], 'price' => $item['price']]);
-                        }
-                        Cart::where('user_id', $userId)->delete();
-                        DB::commit();
-                    } catch (\Exception $e) {
-                        DB::rollBack();
-                        Log::error('Error creating order after payment: ' . $e->getMessage());
-                    }
-                }
+public function callback(Request $request)
+{
+    try {
+        Config::$serverKey = config('midtrans.server_key');
+        Config::$isProduction = config('midtrans.is_production');
+
+        $notif = new Notification();
+
+        $transactionStatus = $notif->transaction_status;
+        $fraudStatus = $notif->fraud_status;
+        $orderId = $notif->order_id;
+
+        // Log untuk debugging
+        Log::info('Midtrans Callback Received', [
+            'order_id' => $orderId,
+            'transaction_status' => $transactionStatus,
+            'fraud_status' => $fraudStatus,
+            'payment_type' => $notif->payment_type ?? 'unknown'
+        ]);
+
+        // PREMIUM SUBSCRIPTION
+        if (str_starts_with($orderId, 'PREMIUM-')) {
+            $canteen = Canteen::where('midtrans_order_id', $orderId)->first();
+
+            if (!$canteen) {
+                Log::error('Canteen not found for premium callback', ['order_id' => $orderId]);
+                return response()->json(['message' => 'Canteen not found'], 200); // Tetap return 200
             }
-            return response()->json(['message' => 'Callback handled successfully']);
-        } catch (\Exception $e) {
-            Log::error('Midtrans callback error: ' . $e->getMessage());
-            return response()->json(['message' => 'Error processing callback'], 500);
+
+            if ($transactionStatus == 'settlement' || ($transactionStatus == 'capture' && $fraudStatus == 'accept')) {
+                $canteen->is_premium = true;
+                $canteen->save();
+                Log::info('Premium subscription activated', ['canteen_id' => $canteen->id]);
+            }
         }
+        // TOP UP BALANCE
+        elseif (str_starts_with($orderId, 'TOPUP-')) {
+            if ($transactionStatus == 'settlement' || ($transactionStatus == 'capture' && $fraudStatus == 'accept')) {
+                try {
+                    $userId = $notif->custom_field2;
+                    $amount = $notif->custom_field3;
+
+                    if (!$userId || !$amount) {
+                        Log::error('Missing top-up data in callback', [
+                            'order_id' => $orderId,
+                            'custom_field2' => $notif->custom_field2,
+                            'custom_field3' => $notif->custom_field3
+                        ]);
+                        return response()->json(['message' => 'Missing top-up data'], 200); // Tetap return 200
+                    }
+
+                    $user = User::find($userId);
+                    if (!$user) {
+                        Log::error('User not found for top-up callback', [
+                            'user_id' => $userId,
+                            'order_id' => $orderId
+                        ]);
+                        return response()->json(['message' => 'User not found'], 200); // Tetap return 200
+                    }
+
+                    // Cek duplikasi - apakah sudah pernah diproses
+                    $existingTransaction = \App\Models\BalanceTransaction::where('description', 'like', "%{$orderId}%")
+                        ->where('user_id', $userId)
+                        ->first();
+
+                    if ($existingTransaction) {
+                        Log::info('Top-up already processed', ['order_id' => $orderId]);
+                        return response()->json(['message' => 'Already processed'], 200);
+                    }
+
+                    DB::beginTransaction();
+
+                    $user->addBalance(
+                        $amount,
+                        "Top up saldo via Midtrans - #{$orderId}",
+                        $orderId
+                    );
+
+                    DB::commit();
+
+                    Log::info('Top-up successful', [
+                        'user_id' => $userId,
+                        'amount' => $amount,
+                        'order_id' => $orderId,
+                        'new_balance' => $user->balance
+                    ]);
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Error processing top-up after payment: ' . $e->getMessage(), [
+                        'order_id' => $orderId,
+                        'user_id' => $userId ?? 'unknown',
+                        'amount' => $amount ?? 'unknown',
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    return response()->json(['message' => 'Error processing top-up'], 200); // Tetap return 200
+                }
+            } elseif ($transactionStatus == 'pending') {
+                Log::info('Top-up payment pending', ['order_id' => $orderId]);
+            } else {
+                Log::info('Top-up payment failed/cancelled', [
+                    'order_id' => $orderId,
+                    'status' => $transactionStatus
+                ]);
+            }
+        }
+        // ORDER PAYMENT
+        elseif (str_starts_with($orderId, 'ORDER-')) {
+            if ($transactionStatus == 'settlement' || ($transactionStatus == 'capture' && $fraudStatus == 'accept')) {
+                try {
+                    // Cek apakah order sudah ada
+                    $existingOrder = Order::where('invoice', $orderId)->first();
+
+                    if ($existingOrder) {
+                        // Update status jika sudah ada
+                        $existingOrder->payment_status = Constant::PAYMENT_STATUS['PAID'];
+                        $existingOrder->save();
+
+                        Log::info('Order payment status updated', ['order_id' => $existingOrder->id]);
+                        return response()->json(['message' => 'Order already exists, status updated'], 200);
+                    }
+
+                    $cartData = json_decode($notif->custom_field1, true);
+                    $canteenId = $notif->custom_field2;
+                    $userId = $notif->custom_field3;
+
+                    if (!$cartData || !$canteenId || !$userId) {
+                        Log::error('Missing cart data in callback', [
+                            'order_id' => $orderId,
+                            'custom_field1' => $notif->custom_field1,
+                            'custom_field2' => $notif->custom_field2,
+                            'custom_field3' => $notif->custom_field3
+                        ]);
+                        return response()->json(['message' => 'Missing cart data'], 200); // Tetap return 200
+                    }
+
+                    DB::beginTransaction();
+
+                    $order = Order::create([
+                        'user_id' => $userId,
+                        'canteen_id' => $canteenId,
+                        'payment_method' => 'digital',
+                        'status' => Constant::ORDER_STATUS['PENDING'],
+                        'payment_status' => Constant::PAYMENT_STATUS['PAID'],
+                        'total_price' => $notif->gross_amount,
+                        'invoice' => $orderId
+                    ]);
+
+                    foreach ($cartData as $item) {
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'menu_id' => $item['menu_id'],
+                            'quantity' => $item['quantity'],
+                            'price' => $item['price']
+                        ]);
+                    }
+
+                    // Hapus cart items
+                    Cart::where('user_id', $userId)
+                        ->where('canteen_id', $canteenId)
+                        ->delete();
+
+                    DB::commit();
+
+                    Log::info('Order created successfully', [
+                        'order_id' => $order->id,
+                        'invoice' => $orderId
+                    ]);
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Error creating order after payment: ' . $e->getMessage(), [
+                        'order_id' => $orderId,
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    return response()->json(['message' => 'Error creating order'], 200); // Tetap return 200
+                }
+            } elseif ($transactionStatus == 'pending') {
+                Log::info('Order payment pending', ['order_id' => $orderId]);
+            } else {
+                Log::info('Order payment failed/cancelled', [
+                    'order_id' => $orderId,
+                    'status' => $transactionStatus
+                ]);
+            }
+        } else {
+            Log::warning('Unknown order type', ['order_id' => $orderId]);
+        }
+
+        // PENTING: Selalu return 200 agar Midtrans tidak kirim ulang
+        return response()->json(['message' => 'Callback handled successfully'], 200);
+
+    } catch (\Exception $e) {
+        Log::error('Midtrans callback error: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        // Tetap return 200 untuk menghentikan retry dari Midtrans
+        return response()->json(['message' => 'Error processed'], 200);
     }
+}
 }

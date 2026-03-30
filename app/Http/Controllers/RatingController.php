@@ -12,9 +12,9 @@ class RatingController extends Controller
     public function show(Menu $menu)
     {
         $menu->load([
-            'ratings' => function($query) {
+            'ratings' => function ($query) {
                 $query->with(['user', 'order'])
-                      ->orderBy('created_at', 'desc');
+                    ->orderBy('created_at', 'desc');
             }
         ]);
 
@@ -33,7 +33,8 @@ class RatingController extends Controller
         return view('user.menus.reviews', compact('menu'));
     }
 
-    public function store(Request $request) {
+    public function store(Request $request)
+    {
         $validated = $request->validate([
             'menu_id' => 'required|exists:menus,id',
             'order_id' => 'required|exists:orders,id',
@@ -43,7 +44,7 @@ class RatingController extends Controller
 
         $orderExists = Order::where('id', $validated['order_id'])
             ->where('user_id', auth()->id())
-            ->whereHas('items', function($q) use ($validated) {
+            ->whereHas('items', function ($q) use ($validated) {
                 $q->where('menu_id', $validated['menu_id']);
             })->exists();
 
