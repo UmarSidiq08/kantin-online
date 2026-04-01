@@ -7,6 +7,7 @@ use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\User\UserOrderController;
 use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\Admin\MenuController;
+use App\Http\Controllers\Admin\AdminOrderCreateController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\Admin\PelangganController;
@@ -47,6 +48,10 @@ Route::middleware('auth')->group(function () {
             Route::put('/settings', 'updateSettings')->name('update-settings');
             Route::post('/quick-toggle', 'quickToggle')->name('quick-toggle');
         });
+
+        Route::get('/orders/create', [AdminOrderCreateController::class, 'create'])->name('orders.create');
+        Route::post('/orders/store-manual', [AdminOrderCreateController::class, 'store'])->name('orders.store-manual');
+        Route::get('/pelanggan/{user}/info', [AdminOrderCreateController::class, 'getUserInfo'])->name('pelanggan.user-info');
 
         Route::prefix('pelanggan')->name('pelanggan.')->controller(PelangganController::class)->group(function () {
             Route::get('/', 'index')->name('index');
