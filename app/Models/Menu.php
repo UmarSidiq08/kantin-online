@@ -13,9 +13,8 @@ class Menu extends Model
     protected $casts = [
         'end_date' => 'date',
         'end_time' => 'datetime',
-  
     ];
-
+    protected $table = 'produk';
     public function canteen()
     {
         return $this->belongsTo(Canteen::class);
@@ -58,21 +57,43 @@ class Menu extends Model
             });
 
         if ($startDate && $endDate) {
-            $query->whereBetween(DB::raw('DATE(order_items.created_at)'), [$startDate, $endDate]);
+            $query->whereBetween(DB::raw('DATE(detailpenjualan.created_at)'), [$startDate, $endDate]);
         }
 
         return $query->sum('quantity') ?? 0;
     }
 
-    // ========== DISCOUNT RELATIONS & METHODS ==========
 
-    // Relasi ke discount
+    public function isStokTersedia(): bool
+    {
+        return $this->stok > 0;
+    }
+
+
+    public function isStokCukup(int $jumlah): bool
+    {
+        return $this->stok >= $jumlah;
+    }
+
+    public function kurangiStok(int $jumlah): void
+    {
+        if (!$this->isStokCukup($jumlah)) {
+            throw new \Exception("Stok {$this->name} tidak mencukupi. Stok tersisa: {$this->stok}");
+        }
+        $this->decrement('stok', $jumlah);
+    }
+
+    public function tambahStok(int $jumlah): void
+    {
+        $this->increment('stok', $jumlah);
+    }
+
+
     public function discounts()
     {
         return $this->hasMany(Discount::class);
     }
 
-    // Dapatkan diskon yang sedang aktif dan berlaku sekarang
     public function activeDiscount()
     {
         return $this->discounts()
@@ -82,14 +103,12 @@ class Menu extends Model
                 $today = $now->toDateString();
                 $currentTime = $now->format('H:i:s');
 
-                // Diskon tanpa batasan tanggal dan jam
                 $query->where(function ($q) {
                     $q->whereNull('start_date')
                         ->whereNull('end_date')
                         ->whereNull('start_time')
                         ->whereNull('end_time');
                 })
-                    // Atau diskon dengan batasan tanggal yang masih berlaku
                     ->orWhere(function ($q) use ($today, $currentTime) {
                         $q->where(function ($dateQuery) use ($today) {
                             $dateQuery->where('start_date', '<=', $today)
@@ -105,71 +124,56 @@ class Menu extends Model
                             });
                     });
             })
-            ->orderBy('value', 'desc') // prioritas diskon terbesar
+            ->orderBy('value', 'desc')
             ->first();
     }
 
-    // Cek apakah menu sedang ada diskon
     public function hasActiveDiscount()
     {
         return $this->activeDiscount() !== null;
     }
 
-    // Dapatkan harga setelah diskon
     public function getDiscountedPrice()
     {
         $activeDiscount = $this->activeDiscount();
-
         if (!$activeDiscount) {
             return $this->price;
         }
-
         return $activeDiscount->getPriceAfterDiscount($this->price);
     }
 
-    // Dapatkan jumlah diskon dalam rupiah
     public function getDiscountAmount()
     {
         $activeDiscount = $this->activeDiscount();
-
         if (!$activeDiscount) {
             return 0;
         }
-
         return $activeDiscount->getDiscountAmount($this->price);
     }
 
-    // Dapatkan persentase diskon (untuk display)
     public function getDiscountPercentage()
     {
         $activeDiscount = $this->activeDiscount();
-
         if (!$activeDiscount) {
             return 0;
         }
-
         if ($activeDiscount->type === 'percentage') {
             return $activeDiscount->value;
         }
-
-        // Konversi fixed amount ke persentase
         return ($activeDiscount->value / $this->price) * 100;
     }
 
-    // Accessor untuk formatted price with discount
     public function getFormattedPriceAttribute()
     {
         if ($this->hasActiveDiscount()) {
             $originalPrice = number_format($this->price, 0, ',', '.');
             $discountedPrice = number_format($this->getDiscountedPrice(), 0, ',', '.');
-
             return [
                 'original' => 'Rp ' . $originalPrice,
                 'discounted' => 'Rp ' . $discountedPrice,
                 'has_discount' => true
             ];
         }
-
         return [
             'original' => 'Rp ' . number_format($this->price, 0, ',', '.'),
             'discounted' => 'Rp ' . number_format($this->price, 0, ',', '.'),
@@ -177,15 +181,12 @@ class Menu extends Model
         ];
     }
 
-    // Accessor untuk discount info
     public function getDiscountInfoAttribute()
     {
         $activeDiscount = $this->activeDiscount();
-
         if (!$activeDiscount) {
             return null;
         }
-
         return [
             'type' => $activeDiscount->type,
             'value' => $activeDiscount->value,

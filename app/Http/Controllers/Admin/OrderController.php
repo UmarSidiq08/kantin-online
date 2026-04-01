@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderLog;
 use App\Constant;
-use Illuminate\Support\Facades\log;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
@@ -28,21 +28,53 @@ class OrderController extends Controller
         $canteenId = auth()->user()->canteen->id;
         try {
             DB::beginTransaction();
-            $pendingOrders = Order::where('canteen_id', $canteenId)->where('status', Constant::ORDER_STATUS['PENDING'])->where('admin_deleted', false)->get();
+            $pendingOrders = Order::where('canteen_id', $canteenId)
+                ->where('status', Constant::ORDER_STATUS['PENDING'])
+                ->where('admin_deleted', false)
+                ->with('items.menu')
+                ->get();
+
             if ($pendingOrders->isEmpty()) {
                 return response()->json(['success' => false, 'message' => 'Tidak ada pesanan pending']);
             }
+
             $processedCount = 0;
             foreach ($pendingOrders as $order) {
+                // ======== KURANGI STOK SETIAP ITEM ========
+                foreach ($order->items as $item) {
+                    $menu = $item->menu;
+                    if (!$menu->isStokCukup($item->quantity)) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Stok {$menu->name} tidak mencukupi (sisa: {$menu->stok}). Pesanan #{$order->id} gagal diproses."
+                        ], 422);
+                    }
+                    $menu->kurangiStok($item->quantity);
+                }
+                // ==========================================
+
                 $order->update(['status' => Constant::ORDER_STATUS['DIPROSES']]);
-                $log = $order->logs()->create(['order_id' => $order->id, 'canteen_id' => $order->canteen_id, 'user_id' => $order->user_id, 'status' => Constant::ORDER_STATUS['DIPROSES'], 'total_price' => $order->total_price, 'items' => $order->items]);
+                $log = $order->logs()->create([
+                    'order_id' => $order->id,
+                    'canteen_id' => $order->canteen_id,
+                    'user_id' => $order->user_id,
+                    'status' => Constant::ORDER_STATUS['DIPROSES'],
+                    'total_price' => $order->total_price,
+                    'items' => $order->items
+                ]);
                 foreach ($order->items as $item) {
                     $item->update(['orderlog_id' => $log->id]);
                 }
                 $processedCount++;
             }
+
             DB::commit();
-            return response()->json(['success' => true, 'message' => "Berhasil menerima {$processedCount} pesanan", 'processed_count' => $processedCount]);
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil menerima {$processedCount} pesanan",
+                'processed_count' => $processedCount
+            ]);
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Bulk accept error: ' . $e->getMessage());
@@ -55,21 +87,39 @@ class OrderController extends Controller
         $canteenId = auth()->user()->canteen->id;
         try {
             DB::beginTransaction();
-            $pendingOrders = Order::where('canteen_id', $canteenId)->where('status', Constant::ORDER_STATUS['PENDING'])->where('admin_deleted', false)->get();
+            $pendingOrders = Order::where('canteen_id', $canteenId)
+                ->where('status', Constant::ORDER_STATUS['PENDING'])
+                ->where('admin_deleted', false)
+                ->get();
+
             if ($pendingOrders->isEmpty()) {
                 return response()->json(['success' => false, 'message' => 'Tidak ada pesanan pending']);
             }
+
             $processedCount = 0;
             foreach ($pendingOrders as $order) {
+                // Stok TIDAK perlu dikembalikan karena belum dipotong saat user pesan
                 $order->update(['status' => Constant::ORDER_STATUS['DITOLAK'], 'admin_deleted' => false]);
-                $log = $order->logs()->create(['order_id' => $order->id, 'canteen_id' => $order->canteen_id, 'user_id' => $order->user_id, 'status' => Constant::ORDER_STATUS['DITOLAK'], 'total_price' => $order->total_price, 'items' => $order->items]);
+                $log = $order->logs()->create([
+                    'order_id' => $order->id,
+                    'canteen_id' => $order->canteen_id,
+                    'user_id' => $order->user_id,
+                    'status' => Constant::ORDER_STATUS['DITOLAK'],
+                    'total_price' => $order->total_price,
+                    'items' => $order->items
+                ]);
                 foreach ($order->items as $item) {
                     $item->update(['orderlog_id' => $log->id]);
                 }
                 $processedCount++;
             }
+
             DB::commit();
-            return response()->json(['success' => true, 'message' => "Berhasil menolak {$processedCount} pesanan", 'processed_count' => $processedCount]);
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil menolak {$processedCount} pesanan",
+                'processed_count' => $processedCount
+            ]);
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Bulk reject error: ' . $e->getMessage());
@@ -79,28 +129,94 @@ class OrderController extends Controller
 
     public function markAsProcessed(Order $order)
     {
-        $order->update(['status' => Constant::ORDER_STATUS['DIPROSES']]);
-        $log = $order->logs()->create(['order_id' => $order->id, 'canteen_id' => $order->canteen_id, 'user_id' => $order->user_id, 'status' => Constant::ORDER_STATUS['DIPROSES'], 'total_price' => $order->total_price, 'items' => $order->items]);
-        foreach ($order->items as $item) {
-            $item->update(['orderlog_id' => $log->id]);
+        try {
+            DB::beginTransaction();
+
+            // ======== KURANGI STOK SETIAP ITEM ========
+            $order->load('items.menu');
+            foreach ($order->items as $item) {
+                $menu = $item->menu;
+                if (!$menu->isStokCukup($item->quantity)) {
+                    DB::rollBack();
+                    return back()->with('error', "Stok {$menu->name} tidak mencukupi (sisa: {$menu->stok}). Pesanan gagal diterima.");
+                }
+                $menu->kurangiStok($item->quantity);
+            }
+            // ==========================================
+
+            $order->update(['status' => Constant::ORDER_STATUS['DIPROSES']]);
+            $log = $order->logs()->create([
+                'order_id' => $order->id,
+                'canteen_id' => $order->canteen_id,
+                'user_id' => $order->user_id,
+                'status' => Constant::ORDER_STATUS['DIPROSES'],
+                'total_price' => $order->total_price,
+                'items' => $order->items
+            ]);
+            foreach ($order->items as $item) {
+                $item->update(['orderlog_id' => $log->id]);
+            }
+
+            DB::commit();
+            return back()->with('success', 'Pesanan berhasil ditandai sebagai diproses.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('markAsProcessed error: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
-        return back()->with('success', 'Pesanan berhasil ditandai sebagai diproses.');
     }
 
     public function markProcessedCash(Order $order)
     {
-        $order->update(['status' => Constant::ORDER_STATUS['DIPROSES']]);
-        $log = $order->logs()->create(['order_id' => $order->id, 'canteen_id' => $order->canteen_id, 'user_id' => $order->user_id, 'status' => Constant::ORDER_STATUS['DIPROSES'], 'total_price' => $order->total_price, 'items' => $order->items]);
-        foreach ($order->items as $item) {
-            $item->update(['orderlog_id' => $log->id]);
+        try {
+            DB::beginTransaction();
+
+            // ======== KURANGI STOK SETIAP ITEM ========
+            $order->load('items.menu');
+            foreach ($order->items as $item) {
+                $menu = $item->menu;
+                if (!$menu->isStokCukup($item->quantity)) {
+                    DB::rollBack();
+                    return back()->with('error', "Stok {$menu->name} tidak mencukupi (sisa: {$menu->stok}). Pesanan gagal diterima.");
+                }
+                $menu->kurangiStok($item->quantity);
+            }
+            // ==========================================
+
+            $order->update(['status' => Constant::ORDER_STATUS['DIPROSES']]);
+            $log = $order->logs()->create([
+                'order_id' => $order->id,
+                'canteen_id' => $order->canteen_id,
+                'user_id' => $order->user_id,
+                'status' => Constant::ORDER_STATUS['DIPROSES'],
+                'total_price' => $order->total_price,
+                'items' => $order->items
+            ]);
+            foreach ($order->items as $item) {
+                $item->update(['orderlog_id' => $log->id]);
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Pesanan cash diproses. Tunggu konfirmasi pembayaran.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('markProcessedCash error: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
-        return redirect()->back()->with('success', 'Pesanan cash diproses. Tunggu konfirmasi pembayaran.');
     }
 
     public function markAsRejected(Order $order)
     {
+        // Stok TIDAK perlu dikembalikan karena belum dipotong saat user pesan
         $order->update(['status' => Constant::ORDER_STATUS['DITOLAK'], 'admin_deleted' => false]);
-        $log = $order->logs()->create(['order_id' => $order->id, 'canteen_id' => $order->canteen_id, 'user_id' => $order->user_id, 'status' => Constant::ORDER_STATUS['DITOLAK'], 'total_price' => $order->total_price, 'items' => $order->items]);
+        $log = $order->logs()->create([
+            'order_id' => $order->id,
+            'canteen_id' => $order->canteen_id,
+            'user_id' => $order->user_id,
+            'status' => Constant::ORDER_STATUS['DITOLAK'],
+            'total_price' => $order->total_price,
+            'items' => $order->items
+        ]);
         foreach ($order->items as $item) {
             $item->update(['orderlog_id' => $log->id]);
         }
@@ -109,12 +225,20 @@ class OrderController extends Controller
 
     public function markAsCompleted(Order $order)
     {
+        // Stok sudah terpotong saat DIPROSES, tidak perlu ubah lagi
         $updateData = ['status' => Constant::ORDER_STATUS['SELESAI'], 'admin_deleted' => true];
         if ($order->payment_method === 'cash' && $order->payment_status === 'unpaid') {
             $updateData['payment_status'] = 'paid';
         }
         $order->update($updateData);
-        $log = $order->logs()->create(['order_id' => $order->id, 'canteen_id' => $order->canteen_id, 'user_id' => $order->user_id, 'status' => Constant::ORDER_STATUS['SELESAI'], 'total_price' => $order->total_price, 'items' => $order->items]);
+        $log = $order->logs()->create([
+            'order_id' => $order->id,
+            'canteen_id' => $order->canteen_id,
+            'user_id' => $order->user_id,
+            'status' => Constant::ORDER_STATUS['SELESAI'],
+            'total_price' => $order->total_price,
+            'items' => $order->items
+        ]);
         foreach ($order->items as $item) {
             $item->update(['orderlog_id' => $log->id]);
         }

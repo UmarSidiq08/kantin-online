@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class OrderItem extends Model
 {
     protected $guarded = ['id'];
+    protected $table = 'detailpenjualan';
 
     public function order()
     {

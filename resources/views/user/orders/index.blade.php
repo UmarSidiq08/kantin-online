@@ -258,25 +258,57 @@
                                 </div>
                             @endif
 
-                            <div class="flex items-center justify-center gap-3 bg-gray-50 rounded-lg p-2 mt-3">
-                                <button type="button" onclick="decrementQty({{ $menu->id }})"
-                                    class="w-7 h-7 flex items-center justify-center bg-white border border-gray-200 rounded-md text-red-500 hover:bg-red-50 hover:border-red-200 transition-all duration-200 shadow-sm">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M20 12H4"></path>
-                                    </svg>
-                                </button>
-                                <input type="number" name="quantities[{{ $menu->id }}]"
-                                    id="qty-{{ $menu->id }}" value="0" min="0"
-                                    class="w-14 h-7 text-center font-semibold text-sm border border-gray-200 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                                <button type="button" onclick="incrementQty({{ $menu->id }})"
-                                    class="w-7 h-7 flex items-center justify-center bg-white border border-gray-200 rounded-md text-green-500 hover:bg-green-50 hover:border-green-200 transition-all duration-200 shadow-sm">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                    </svg>
-                                </button>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-gray-500">Stok:</span>
+                                @if ($menu->stok == 0)
+                                    <span class="text-xs font-semibold text-red-500">Habis</span>
+                                @elseif ($menu->stok <= 5)
+                                    <span class="text-xs font-semibold text-orange-500">Sisa {{ $menu->stok }}</span>
+                                @else
+                                    <span class="text-xs font-semibold text-green-600">Tersedia
+                                        ({{ $menu->stok }})</span>
+                                @endif
                             </div>
+
+                            {{-- Quantity input --}}
+                            @if ($menu->stok_tersedia)
+                                <div class="flex items-center justify-center gap-3 bg-gray-50 rounded-lg p-2 mt-1">
+                                    <button type="button" onclick="decrementQty({{ $menu->id }})"
+                                        class="w-7 h-7 flex items-center justify-center bg-white border border-gray-200 rounded-md text-red-500 hover:bg-red-50 hover:border-red-200 transition-all duration-200 shadow-sm">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M20 12H4"></path>
+                                        </svg>
+                                    </button>
+                                    <input type="number" name="quantities[{{ $menu->id }}]"
+                                        id="qty-{{ $menu->id }}" value="0" min="0"
+                                        max="{{ $menu->stok }}"
+                                        class="w-14 h-7 text-center font-semibold text-sm border border-gray-200 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                                    <button type="button"
+                                        onclick="incrementQty({{ $menu->id }}, {{ $menu->stok }})"
+                                        class="w-7 h-7 flex items-center justify-center bg-white border border-gray-200 rounded-md text-green-500 hover:bg-green-50 hover:border-green-200 transition-all duration-200 shadow-sm">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            @else
+                                {{-- Stok habis: tombol di-disable --}}
+                                <div
+                                    class="flex items-center justify-center bg-red-50 border border-red-200 rounded-lg p-2 mt-1">
+                                    <span class="text-red-500 text-sm font-semibold flex items-center gap-1.5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636">
+                                            </path>
+                                        </svg>
+                                        Stok Habis
+                                    </span>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endforeach
@@ -310,9 +342,16 @@
             updateCartButton();
         }
 
-        function incrementQty(id) {
+        // Tambahan parameter maxStok untuk mencegah melebihi stok
+        function incrementQty(id, maxStok) {
             const qtyInput = document.getElementById(`qty-${id}`);
-            qtyInput.value = parseInt(qtyInput.value) + 1;
+            const current = parseInt(qtyInput.value);
+            if (current >= maxStok) {
+                // Tampilkan notif kecil kalau sudah mentok
+                showStokWarning(id, maxStok);
+                return;
+            }
+            qtyInput.value = current + 1;
             updateLocalStorage(id);
         }
 
@@ -322,6 +361,21 @@
                 qtyInput.value = parseInt(qtyInput.value) - 1;
                 updateLocalStorage(id);
             }
+        }
+
+        function showStokWarning(id, maxStok) {
+            // Hapus warning lama kalau ada
+            const existing = document.getElementById(`stok-warning-${id}`);
+            if (existing) existing.remove();
+
+            const input = document.getElementById(`qty-${id}`);
+            const warning = document.createElement('div');
+            warning.id = `stok-warning-${id}`;
+            warning.className = 'text-xs text-orange-500 font-medium text-center mt-1';
+            warning.textContent = `Maks. stok: ${maxStok}`;
+            input.parentElement.after(warning);
+
+            setTimeout(() => warning.remove(), 2000);
         }
 
         function updateCartButton() {
@@ -342,7 +396,9 @@
             for (let id in quantities) {
                 const input = document.getElementById(`qty-${id}`);
                 if (input) {
-                    input.value = quantities[id];
+                    // Pastikan nilai dari localStorage tidak melebihi stok terbaru
+                    const maxStok = parseInt(input.getAttribute('max'));
+                    input.value = Math.min(quantities[id], maxStok);
                 }
             }
             updateCartButton();
@@ -360,9 +416,7 @@
                 alertDiv.innerHTML =
                     `<div class="flex items-center gap-3"><svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span class="font-medium">Pilih minimal 1 menu terlebih dahulu!</span></div>`;
                 document.body.appendChild(alertDiv);
-                setTimeout(() => {
-                    alertDiv.remove();
-                }, 3000);
+                setTimeout(() => alertDiv.remove(), 3000);
                 return;
             }
             for (let id in quantities) {

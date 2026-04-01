@@ -21,7 +21,7 @@ class DiscountController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'menu_id' => 'required|exists:menus,id',
+            'menu_id' => 'required|exists:produk,id', // Perubahan: menus → produk
             'type' => 'required|in:percentage,fixed',
             'value' => 'required|numeric|min:0',
             'start_date' => 'nullable|date|after_or_equal:today',
@@ -60,7 +60,7 @@ class DiscountController extends Controller
     {
         $data = $request->validate([
             'id' => 'required|exists:discounts,id',
-            'menu_id' => 'required|exists:menus,id',
+            'menu_id' => 'required|exists:produk,id', // Perubahan: menus → produk
             'type' => 'required|in:percentage,fixed',
             'value' => 'required|numeric|min:0',
             'start_date' => 'nullable|date',

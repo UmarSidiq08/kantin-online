@@ -9,7 +9,7 @@ use App\Http\Controllers\User\CartController;
 use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RatingController;
-use App\Http\Controllers\BalanceController;
+use App\Http\Controllers\Admin\PelangganController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\CanteenSettingsController;
@@ -46,6 +46,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/settings', 'index')->name('settings');
             Route::put('/settings', 'updateSettings')->name('update-settings');
             Route::post('/quick-toggle', 'quickToggle')->name('quick-toggle');
+        });
+
+        Route::prefix('pelanggan')->name('pelanggan.')->controller(PelangganController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/{user}', 'show')->name('show');
+            Route::post('/{user}/toggle-block','toggleBlock')->name('toggle-block');
         });
 
         Route::prefix('orders')->name('orders.')->controller(OrderController::class)->group(function () {

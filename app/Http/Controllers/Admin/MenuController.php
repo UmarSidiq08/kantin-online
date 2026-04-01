@@ -25,6 +25,7 @@ class MenuController extends Controller
             'description' => 'nullable|string',
             'category' => 'required|string',
             'price' => 'required|numeric',
+            'stok' => 'required|integer|min:0',
             'image' => 'nullable|image|max:2048',
         ]);
         if ($request->hasFile('image')) {
@@ -38,17 +39,28 @@ class MenuController extends Controller
     public function update(Request $request)
     {
         $data = $request->validate([
-            'id' => 'required|exists:menus,id',
+            'id' => 'required|exists:produk,id',
             'name' => 'required|string',
             'description' => 'nullable|string',
             'category' => 'required|string',
             'price' => 'required|numeric',
+            'stok' => 'required|integer|min:0',
             'image' => 'nullable|image|max:2048',
         ]);
+
         $menu = auth()->user()->canteen->menus()->findOrFail($request->id);
+
         if ($request->hasFile('image')) {
+            // Ada gambar baru → hapus gambar lama, simpan yang baru
+            if ($menu->image) {
+                Storage::disk('public')->delete($menu->image);
+            }
             $data['image'] = $request->file('image')->store('menu-images', 'public');
+        } else {
+            // Tidak ada gambar baru → pertahankan gambar lama
+            unset($data['image']);
         }
+
         $menu->update($data);
         return response()->json(['message' => 'Menu berhasil diperbarui!']);
     }
@@ -56,6 +68,10 @@ class MenuController extends Controller
     public function destroy(Request $request)
     {
         $menu = auth()->user()->canteen->menus()->findOrFail($request->id);
+        // Hapus gambar dari storage juga
+        if ($menu->image) {
+            Storage::disk('public')->delete($menu->image);
+        }
         $menu->delete();
         return response()->json(['message' => 'Data berhasil dihapus!']);
     }
@@ -74,7 +90,15 @@ class MenuController extends Controller
                 ->editColumn('category', function ($menu) {
                     return Constant::MENU_CATEGORIES[$menu->category] ?? 'Tidak Diketahui';
                 })
-                ->rawColumns(['action', 'image'])
+                ->addColumn('stok', function ($row) {
+                    if ($row->stok == 0) {
+                        return '<span class="badge bg-danger">Habis</span>';
+                    } elseif ($row->stok <= 5) {
+                        return '<span class="badge bg-warning text-dark">' . $row->stok . '</span>';
+                    }
+                    return '<span class="badge bg-success">' . $row->stok . '</span>';
+                })
+                ->rawColumns(['action', 'image', 'stok'])
                 ->make(true);
         }
     }

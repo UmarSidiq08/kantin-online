@@ -124,6 +124,18 @@
                             <span class="font-medium">Riwayat Pesanan</span>
                         </a>
                     </li>
+                    <li class="animate-fade-in" style="animation-delay: 0.3s">
+                        <a href="{{ route('admin.logs') }}"
+                            class="flex items-center px-4 py-3 text-emerald-100 hover:bg-emerald-700/60 hover:text-white hover:shadow-green rounded-xl transition-all duration-200 group {{ request()->routeIs('admin.logs*') ? 'border-l-4 border-emerald-400 bg-emerald-700/60 text-white shadow-green' : '' }}">
+                            <div
+                                class="w-5 h-5 mr-3 p-1 bg-emerald-600 rounded-lg group-hover:bg-emerald-500 transition-colors">
+                                <svg class="w-full h-full" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <span class="font-medium">Tambah Pesanan</span>
+                        </a>
+                    </li>
                     <li class="animate-fade-in" style="animation-delay: 0.4s">
                         <a href="{{ route('admin.laporan.index') }}"
                             class="flex items-center px-4 py-3 text-emerald-100 hover:bg-emerald-700/60 hover:text-white hover:shadow-green rounded-xl transition-all duration-200 group {{ request()->routeIs('admin.laporan.index*') ? 'border-l-4 border-emerald-400 bg-emerald-700/60 text-white shadow-green' : '' }}">
@@ -136,6 +148,20 @@
                                 </svg>
                             </div>
                             <span class="font-medium">Laporan Penjualan</span>
+                        </a>
+                    </li>
+                    <li class="animate-fade-in" style="animation-delay: 0.4s">
+                        <a href="{{ route('admin.pelanggan.index') }}"
+                            class="flex items-center px-4 py-3 text-emerald-100 hover:bg-emerald-700/60 hover:text-white hover:shadow-green rounded-xl transition-all duration-200 group {{ request()->routeIs('admin.pelanggan*') ? 'border-l-4 border-emerald-400 bg-emerald-700/60 text-white shadow-green' : '' }}">
+                            <div
+                                class="w-5 h-5 mr-3 p-1 bg-emerald-600 rounded-lg group-hover:bg-emerald-500 transition-colors">
+                                <svg class="w-full h-full" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <span class="font-medium">Kelola Pelanggan</span>
                         </a>
                     </li>
                     <li class="animate-fade-in group relative" style="animation-delay: 0.5s">

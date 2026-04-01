@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\User;
 
 use App\Constant;
-use Midtrans\Config;
-use Midtrans\Snap;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Menu;
@@ -14,12 +12,10 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Yajra\DataTables\Facades\DataTables;
 
 class UserOrderController extends Controller
 {
-
     public function index(Request $request)
     {
         $canteenId = session('selected_canteen_id');
@@ -27,7 +23,6 @@ class UserOrderController extends Controller
             return redirect()->route('user.dashboard')->with('error', 'Silakan pilih kantin terlebih dahulu.');
         }
 
-        // Build query for menus with active discounts
         $query = Menu::where('canteen_id', $canteenId)
             ->with(['discounts' => function ($discountQuery) {
                 $discountQuery->active()
@@ -57,16 +52,12 @@ class UserOrderController extends Controller
                     });
             }]);
 
-        // Apply category filter
         if ($request->filled('category') && $request->category !== 'semua') {
             $query->where('category', $request->category);
         }
 
-        // Apply sorting
         $sort = $request->get('sort', 'default');
         $menus = $this->applySorting($query, $sort);
-
-        // Process menu data (add formatting, ratings, etc.)
         $menus = $this->processMenuData($menus);
 
         return view('user.orders.index', [
@@ -90,6 +81,26 @@ class UserOrderController extends Controller
             if (!$canteenId) {
                 return response()->json(['message' => 'Silakan pilih kantin terlebih dahulu.'], 400);
             }
+
+            // ======== CEK STOK SEMUA MENU SEBELUM BUAT PESANAN ========
+            $stokKurang = [];
+            foreach ($validated['quantities'] as $menuId => $quantity) {
+                if ($quantity > 0) {
+                    $menu = Menu::findOrFail($menuId);
+                    if (!$menu->isStokCukup($quantity)) {
+                        $stokKurang[] = "{$menu->name} (stok tersisa: {$menu->stok})";
+                    }
+                }
+            }
+
+            // Jika ada menu yang stoknya kurang, batalkan semua
+            if (!empty($stokKurang)) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Stok tidak mencukupi untuk: ' . implode(', ', $stokKurang),
+                ], 422);
+            }
+            // ======================================================
 
             $order = Order::create([
                 'user_id' => Auth::id(),
@@ -178,6 +189,7 @@ class UserOrderController extends Controller
             ->rawColumns(['status', 'menus', 'payment_status'])
             ->make(true);
     }
+
     private function getCategoryOptions()
     {
         return [
@@ -202,7 +214,6 @@ class UserOrderController extends Controller
 
     private function processMenuData($menus)
     {
-        // Get sales data for all menus at once
         $menuIds = $menus->pluck('id');
         $salesData = OrderItem::select('menu_id', DB::raw('SUM(quantity) as total_sold'))
             ->whereHas('order', function ($query) {
@@ -213,11 +224,9 @@ class UserOrderController extends Controller
             ->pluck('total_sold', 'menu_id');
 
         return $menus->map(function ($menu) use ($salesData) {
-            // Sales information
             $menu->total_sold = $salesData[$menu->id] ?? 0;
             $menu->formatted_total_sold = number_format($menu->total_sold, 0, ',', '.');
 
-            // Rating information
             $rating = $menu->averageRating();
             $menu->full_stars = floor($rating);
             $menu->has_half_star = ($rating - $menu->full_stars) >= 0.5;
@@ -225,10 +234,8 @@ class UserOrderController extends Controller
             $menu->formatted_average_rating = number_format($rating, 1);
             $menu->total_ratings = $menu->totalRatings();
 
-            // Category display
             $menu->category_display = Constant::MENU_CATEGORIES[$menu->category] ?? 'Tidak Diketahui';
 
-            // Discount information - menggunakan method langsung dari model
             $menu->has_active_discount = $menu->hasActiveDiscount();
 
             if ($menu->has_active_discount) {
@@ -237,13 +244,11 @@ class UserOrderController extends Controller
                 $discountAmount = $menu->getDiscountAmount();
                 $discountPercentage = round($menu->getDiscountPercentage());
 
-                // Set formatted prices for discount case
                 $menu->discount_percentage = $discountPercentage;
                 $menu->formatted_original_price = 'Rp ' . number_format($menu->price, 0, ',', '.');
                 $menu->formatted_discounted_price = 'Rp ' . number_format($discountedPrice, 0, ',', '.');
                 $menu->formatted_savings = 'Rp ' . number_format($discountAmount, 0, ',', '.');
 
-                // Discount period text
                 $periodText = '';
                 if ($activeDiscount->end_date) {
                     $periodText .= 's/d ' . $activeDiscount->end_date->format('d/m/Y');
@@ -254,8 +259,12 @@ class UserOrderController extends Controller
                 $menu->discount_period = $periodText;
             }
 
-            // Always set price display as string (avoid accessor conflict)
             $menu->price_display = 'Rp ' . number_format($menu->price, 0, ',', '.');
+
+            // ======== TAMBAHAN INFO STOK ========
+            $menu->stok_tersedia = $menu->isStokTersedia();
+            $menu->stok_display = $menu->stok > 0 ? "Sisa {$menu->stok}" : 'Stok Habis';
+            // =====================================
 
             return $menu;
         });

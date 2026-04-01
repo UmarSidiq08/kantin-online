@@ -72,18 +72,21 @@ class LaporanPenjualanController extends Controller
         $start = $request->start_date;
         $end = $request->end_date;
         $sortBy = $request->sort_by;
-        $query = OrderItem::with('menu')->join('menus', 'order_items.menu_id', '=', 'menus.id')
+
+        // Perubahan: 'menus' → 'produk', 'order_items' → 'detailpenjualan'
+        $query = OrderItem::with('menu')->join('produk', 'detailpenjualan.menu_id', '=', 'produk.id')
             ->select(
-                'order_items.menu_id',
-                'menus.name as menu_name',
-                DB::raw('SUM(order_items.quantity) as total_terjual'),
-                DB::raw('SUM(order_items.quantity * order_items.price) as total_pendapatan'),
-                DB::raw('MAX(order_items.created_at) as terakhir_terjual')
-            )->whereHas('order', fn($q) => $q->where('status', 'selesai'))->where('menus.canteen_id', $canteenId)->groupBy('order_items.menu_id', 'menus.name');
+                'detailpenjualan.menu_id',
+                'produk.name as menu_name',
+                DB::raw('SUM(detailpenjualan.quantity) as total_terjual'),
+                DB::raw('SUM(detailpenjualan.quantity * detailpenjualan.price) as total_pendapatan'),
+                DB::raw('MAX(detailpenjualan.created_at) as terakhir_terjual')
+            )->whereHas('order', fn($q) => $q->where('status', 'selesai'))->where('produk.canteen_id', $canteenId)->groupBy('detailpenjualan.menu_id', 'produk.name');
 
         if ($start && $end) {
-            $query->whereBetween(DB::raw('DATE(order_items.created_at)'), [$start, $end]);
+            $query->whereBetween(DB::raw('DATE(detailpenjualan.created_at)'), [$start, $end]);
         }
+
         switch ($sortBy) {
             case 'total_terjual_desc':
                 $query->orderBy('total_terjual', 'desc');
@@ -101,6 +104,7 @@ class LaporanPenjualanController extends Controller
                 $query->orderBy('terakhir_terjual', 'desc');
                 break;
         }
+
         return DataTables::of($query)
             ->addIndexColumn()
             ->editColumn('menu', fn($item) => $item->menu_name ?? '-')
@@ -108,7 +112,8 @@ class LaporanPenjualanController extends Controller
             ->addColumn('total', fn($item) => 'Rp ' . number_format($item->total_pendapatan, 0, ',', '.'))
             ->addColumn('terakhir', fn($item) => \Carbon\Carbon::parse($item->terakhir_terjual)->format('Y-m-d H:i'))
             ->filterColumn('menu_name', function ($query, $keyword) {
-                $query->where('menus.name', 'like', "%{$keyword}%");
+                // Perubahan: 'menus.name' → 'produk.name'
+                $query->where('produk.name', 'like', "%{$keyword}%");
             })
             ->toJson();
     }
@@ -121,36 +126,37 @@ class LaporanPenjualanController extends Controller
         return Excel::download(new MenuSalesExport($start, $end, $canteenId), 'laporan_penjualan_menu.xlsx');
     }
 
-  public function exportPDF(Request $request)
-{
-    $canteenId = auth()->user()->canteen->id;
-    $start = $request->start_date;
-    $end = $request->end_date;
+    public function exportPDF(Request $request)
+    {
+        $canteenId = auth()->user()->canteen->id;
+        $start = $request->start_date;
+        $end = $request->end_date;
 
-    $query = OrderItem::join('menus', 'order_items.menu_id', '=', 'menus.id')
-        ->select(
-            'menus.name as menu_name',
-            DB::raw('SUM(order_items.quantity) as total_terjual'),
-            DB::raw('SUM(order_items.quantity * order_items.price) as total_pendapatan'),
-            DB::raw('MAX(order_items.created_at) as terakhir_terjual')
-        )
-        ->whereHas('order', fn($q) => $q->where('status', 'selesai'))
-        ->where('menus.canteen_id', $canteenId)
-        ->groupBy('menus.name');
+        // Perubahan: 'menus' → 'produk', 'order_items' → 'detailpenjualan'
+        $query = OrderItem::join('produk', 'detailpenjualan.menu_id', '=', 'produk.id')
+            ->select(
+                'produk.name as menu_name',
+                DB::raw('SUM(detailpenjualan.quantity) as total_terjual'),
+                DB::raw('SUM(detailpenjualan.quantity * detailpenjualan.price) as total_pendapatan'),
+                DB::raw('MAX(detailpenjualan.created_at) as terakhir_terjual')
+            )
+            ->whereHas('order', fn($q) => $q->where('status', 'selesai'))
+            ->where('produk.canteen_id', $canteenId)
+            ->groupBy('produk.name');
 
-    if ($start && $end) {
-        $query->whereBetween(DB::raw('DATE(order_items.created_at)'), [$start, $end]);
+        if ($start && $end) {
+            $query->whereBetween(DB::raw('DATE(detailpenjualan.created_at)'), [$start, $end]);
+        }
+
+        $data = $query->orderBy('total_terjual', 'desc')->get();
+
+        // Hitung total untuk summary
+        $totalItems = $data->sum('total_terjual');
+        $totalRevenue = $data->sum('total_pendapatan');
+
+        $pdf = Pdf::loadView('exports.menu_sales', compact('data', 'totalItems', 'totalRevenue'));
+        return $pdf->download('laporan_penjualan_menu.pdf');
     }
-
-    $data = $query->orderBy('total_terjual', 'desc')->get();
-
-    // Hitung total untuk summary
-    $totalItems = $data->sum('total_terjual');
-    $totalRevenue = $data->sum('total_pendapatan');
-
-    $pdf = Pdf::loadView('exports.menu_sales', compact('data', 'totalItems', 'totalRevenue'));
-    return $pdf->download('laporan_penjualan_menu.pdf');
-}
 
     public function chartData()
     {

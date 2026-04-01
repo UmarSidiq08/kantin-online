@@ -36,8 +36,8 @@ class RatingController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'menu_id' => 'required|exists:menus,id',
-            'order_id' => 'required|exists:orders,id',
+            'menu_id' => 'required|exists:produk,id',
+            'order_id' => 'required|exists:penjualan,id',
             'rating' => 'required|integer|min:1|max:5',
             'review_text' => 'nullable|string|max:500'
         ]);

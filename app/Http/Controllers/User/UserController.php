@@ -13,22 +13,35 @@ class UserController extends Controller
     {
         $canteens = Canteen::all();
 
-        $canteensWithStatus = $canteens->map(function ($canteen) {
-            $isOpen = $canteen->isOpen();
-            $todaySchedule = $canteen->getTodaySchedule();
-            $nextOpenTime = !$isOpen ? $canteen->getNextOpenTime() : null;
+        $canteensWithStatus = Canteen::all()
+            ->map(function ($canteen) {
 
-            return [
-                'id' => $canteen->id,
-                'name' => $canteen->name,
-                'is_open' => $isOpen,
-                'today_schedule' => $todaySchedule,
-                'next_open_time' => $nextOpenTime,
-                'status_text' => $isOpen ? 'Buka' : 'Tutup',
-                'status_color' => $isOpen ? 'green' : 'red',
-                'schedule_text' => $this->getScheduleText($todaySchedule, $nextOpenTime, $isOpen)
-            ];
-        });
+                $userId = auth()->id();
+                $isBlocked = $canteen->isUserBlocked($userId);
+
+                $isOpen = $canteen->isOpen();
+                $todaySchedule = $canteen->getTodaySchedule();
+                $nextOpenTime = !$isOpen ? $canteen->getNextOpenTime() : null;
+
+                return [
+                    'id' => $canteen->id,
+                    'name' => $canteen->name,
+                    'is_open' => $isOpen,
+                    'is_blocked' => $isBlocked, 
+
+                    'today_schedule' => $todaySchedule,
+                    'next_open_time' => $nextOpenTime,
+
+                    'status_text' => $isOpen ? 'Buka' : 'Tutup',
+                    'status_color' => $isOpen ? 'green' : 'red',
+
+                    'schedule_text' => $this->getScheduleText(
+                        $todaySchedule,
+                        $nextOpenTime,
+                        $isOpen
+                    ),
+                ];
+            });
 
         return view('user.dashboard', compact('canteensWithStatus'));
     }

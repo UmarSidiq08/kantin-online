@@ -26,6 +26,25 @@ class Canteen extends Model
     {
         return $this->hasMany(Menu::class);
     }
+    public function blockedUsers()
+    {
+        return $this->hasMany(CanteenBlock::class);
+    }
+
+    public function isUserBlocked(int $userId): bool
+    {
+        return $this->blockedUsers()->where('user_id', $userId)->exists();
+    }
+
+    public function blockUser(int $userId): void
+    {
+        $this->blockedUsers()->firstOrCreate(['user_id' => $userId]);
+    }
+
+    public function unblockUser(int $userId): void
+    {
+        $this->blockedUsers()->where('user_id', $userId)->delete();
+    }
 
     /**
      * Cek apakah kantin sedang buka

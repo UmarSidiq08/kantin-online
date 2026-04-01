@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -14,34 +14,14 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'balance',
-        'alamat',
+        'name', 'email', 'password', 'balance', 'alamat',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
-        'password',
-        'remember_token',
+        'password', 'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
@@ -52,6 +32,7 @@ class User extends Authenticatable
     {
         return $this->hasOne(Canteen::class);
     }
+
     public function ratings()
     {
         return $this->hasMany(Rating::class);
@@ -62,22 +43,37 @@ class User extends Authenticatable
         return $this->hasMany(BalanceTransaction::class);
     }
 
+    // Tambahan relasi orders
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    // Tambahan relasi blokir
+    public function canteenBlocks()
+    {
+        return $this->hasMany(CanteenBlock::class);
+    }
+
+    /**
+     * Cek apakah user diblokir oleh kantin tertentu
+     */
+    public function isBlockedBy(int $canteenId): bool
+    {
+        return $this->canteenBlocks()->where('canteen_id', $canteenId)->exists();
+    }
 
     public function hasEnoughBalance($amount)
     {
         return $this->balance >= $amount;
     }
 
-    /**
-     * Method untuk menambah saldo
-     */
     public function addBalance($amount, $description = null, $referenceId = null)
     {
         $balanceBefore = $this->balance;
         $this->balance += $amount;
         $this->save();
 
-        // Record transaksi
         BalanceTransaction::create([
             'user_id' => $this->id,
             'type' => 'top_up',
@@ -91,9 +87,6 @@ class User extends Authenticatable
         return $this;
     }
 
-    /**
-     * Method untuk mengurangi saldo (pembayaran)
-     */
     public function deductBalance($amount, $description = null, $referenceId = null)
     {
         if ($this->balance < $amount) {
@@ -104,7 +97,6 @@ class User extends Authenticatable
         $this->balance -= $amount;
         $this->save();
 
-        // Record transaksi
         BalanceTransaction::create([
             'user_id' => $this->id,
             'type' => 'payment',
